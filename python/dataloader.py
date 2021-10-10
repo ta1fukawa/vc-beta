@@ -71,7 +71,7 @@ class DataLoader(torch.utils.data.Dataset):
         speaker        = self.speaker_list[speaker_idx]
         speech         = self.speech_list[speech_idx]
         if self.preload:
-            data = self.data[seiren_speaker_idx][speaker][speech]
+            data = self.data[seiren_speaker_idx][speaker_idx][speech_idx]
         else:
             data = np.load(f'resource/mid/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.npz', allow_pickle=True)['sp'][:, :512]
         return data
