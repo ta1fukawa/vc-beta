@@ -15,11 +15,11 @@ class DataLoader(torch.utils.data.Dataset):
             assert sp_length is not None
             self.data = np.empty((len(self.seiren_speaker_list), len(self.speaker_list), len(self.speech_list), sp_length, 512))
             for seiren_speaker_idx, seiren_speaker in enumerate(self.seiren_speaker_list):
-                for speaker in self.speaker_list:
-                    for speech in self.speech_list:
+                for speaker_idx, speaker in enumerate(self.speaker_list):
+                    for speech_idx, speech in enumerate(self.speech_list):
                         sp = np.load(f'resource/mid/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.npz', allow_pickle=True)['sp'][:, :512]
                         sp = self._zero_padding(sp[:self.sp_length], self.sp_length)
-                        self.data[seiren_speaker_idx][speaker][speech] = sp
+                        self.data[seiren_speaker_idx][speaker_idx][speech_idx] = sp
 
         self.set_seed(None)
 
@@ -49,8 +49,8 @@ class DataLoader(torch.utils.data.Dataset):
             temp, target_speaker_idx        = divmod(temp, len(self.speaker_list))
             temp, target_seiren_speaker_idx = divmod(temp, len(self.seiren_speaker_list))
 
-            source_sp_i = self._load_sp(source_seiren_speaker_idx, source_speaker_idx, source_speech_idx)[:, :512]
-            target_sp_i = self._load_sp(target_seiren_speaker_idx, target_speaker_idx, target_speech_idx)[:, :512]
+            source_sp_i = self._load_sp(source_seiren_speaker_idx, source_speaker_idx, source_speech_idx)
+            target_sp_i = self._load_sp(target_seiren_speaker_idx, target_speaker_idx, target_speech_idx)
             speaker_embed_i = self.speaker_embeds[target_speaker_idx]
 
             if not self.preload and self.sp_length is not None:
@@ -73,8 +73,8 @@ class DataLoader(torch.utils.data.Dataset):
         if self.preload:
             data = self.data[seiren_speaker_idx][speaker][speech]
         else:
-            data = np.load(f'resource/mid/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.npz', allow_pickle=True)
-        return data['sp']
+            data = np.load(f'resource/mid/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.npz', allow_pickle=True)['sp'][:, :512]
+        return data
 
     @staticmethod
     def _zero_padding(x, target_length):
