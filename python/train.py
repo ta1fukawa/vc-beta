@@ -4,7 +4,6 @@ import sys
 
 import numpy as np
 import torch
-from torch._C import T
 import tqdm
 
 from dataloader import DataLoader

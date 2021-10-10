@@ -14,12 +14,12 @@ class DataLoader(torch.utils.data.Dataset):
         if self.preload:
             assert sp_length is not None
             self.data = np.empty((len(self.seiren_speaker_list), len(self.speaker_list), len(self.speech_list), sp_length))
-            for seiren_speaker in self.seiren_speaker_list:
+            for seiren_speaker_idx, seiren_speaker in enumerate(self.seiren_speaker_list):
                 for speaker in self.speaker_list:
                     for speech in self.speech_list:
                         sp = np.load(f'resource/mid/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.npz', allow_pickle=True)['sp']
                         sp = self._zero_padding(sp[:self.sp_length], self.sp_length)
-                        self.data[seiren_speaker][speaker][speech] = sp
+                        self.data[seiren_speaker_idx][speaker][speech] = sp
 
         self.set_seed(None)
 
@@ -70,7 +70,10 @@ class DataLoader(torch.utils.data.Dataset):
         seiren_speaker = self.seiren_speaker_list[seiren_speaker_idx]
         speaker        = self.speaker_list[speaker_idx]
         speech         = self.speech_list[speech_idx]
-        data = np.load(f'resource/mid/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.npz', allow_pickle=True)
+        if self.preload:
+            data = self.data[seiren_speaker_idx][speaker][speech]
+        else:
+            data = np.load(f'resource/mid/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.npz', allow_pickle=True)
         return data['sp']
 
     @staticmethod
