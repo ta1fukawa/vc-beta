@@ -136,10 +136,10 @@ def main():
     for thread in threads:
         thread.join()
     speaker_embed_list = np.vstack([results[i] for i in range(ngpus)])
-    np.save(f'resource/speaker-embeds.npz', embed=speaker_embed_list)
+    np.savez_compressed(f'resource/speaker-embeds.npz', embed=speaker_embed_list)
 
 def multithread(thread_id, nthread, lock, results):
-    pool = multiprocessing.Pool(processes=2)
+    pool = multiprocessing.Pool(processes=3)
     speaker_embed_list = np.array(pool.map(functools.partial(get_speaker_embed, gpu_id=thread_id), range(thread_id * 100 // nthread, (thread_id + 1) * 100 // nthread)))
     with lock: results[thread_id] = speaker_embed_list
 
