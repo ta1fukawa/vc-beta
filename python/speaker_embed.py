@@ -123,12 +123,12 @@ class FullModel(torch.nn.Module):
         return x
 
 def main():
-    speaker_embed_list0 = np.array(multiprocessing.Pool(processes=8).map(functools.partial(get_speaker_embed, gpu_id=0), range( 0,  25)))
-    speaker_embed_list1 = np.array(multiprocessing.Pool(processes=8).map(functools.partial(get_speaker_embed, gpu_id=1), range(25,  50)))
-    speaker_embed_list2 = np.array(multiprocessing.Pool(processes=8).map(functools.partial(get_speaker_embed, gpu_id=2), range(50,  75)))
-    speaker_embed_list3 = np.array(multiprocessing.Pool(processes=8).map(functools.partial(get_speaker_embed, gpu_id=3), range(75, 100)))
-    speaker_embed_list = np.vstack([speaker_embed_list0, speaker_embed_list1, speaker_embed_list2, speaker_embed_list3])
+    speaker_embed_list = np.vstack(multiprocessing.Pool(processes=4).map(call_multithread, range(4)))
     np.save(f'resource/speaker-embeds.npz', embed=speaker_embed_list)
+
+def call_multithread(i):
+    speaker_embed_list = np.array(multiprocessing.Pool(processes=4).map(functools.partial(get_speaker_embed, gpu_id=i), range(i * 25, (i + 1) * 25)))
+    return speaker_embed_list
 
 def get_speaker_embed(speaker, gpu_id):
     gpu_id = speaker % 4
