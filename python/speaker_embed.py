@@ -138,16 +138,15 @@ def main():
     speaker_embed_list = np.vstack([results[i] for i in range(ngpus)])
     np.save(f'resource/speaker-embeds.npz', embed=speaker_embed_list)
 
-def multithread(gpu_id, nthread, lock, results):
+def multithread(thread_id, nthread, lock, results):
+    pool = multiprocessing.Pool(processes=4)
+    speaker_embed_list = np.array(pool.map(functools.partial(get_speaker_embed, gpu_id=thread_id), range(thread_id * 100 // nthread, (thread_id + 1) * 100 // nthread)))
+    with lock: results[thread_id] = speaker_embed_list
+
+def get_speaker_embed(speaker, gpu_id):
     speaker_classfier = FullModel(2).to(f'cuda:{gpu_id}')
     speaker_classfier.load_state_dict(torch.load(f'resource/speaker-encoder.pth'))
 
-    pool = multiprocessing.Pool(processes=4)
-    speaker_embed_list = np.array(pool.map(functools.partial(get_speaker_embed, gpu_id=gpu_id, speaker_classfier=speaker_classfier),
-            range(gpu_id * 100 // nthread, (gpu_id + 1) * 100 // nthread)))
-    with lock: results[gpu_id] = speaker_embed_list
-
-def get_speaker_embed(speaker, gpu_id, speaker_classfier):
     embed_list = list()
     for seiren_speaker in [10]:
         for speech in range(100):
@@ -163,6 +162,7 @@ def get_speaker_embed(speaker, gpu_id, speaker_classfier):
             embed_sub = speaker_classfier.embed(phonemes)
             embed_sub = embed_sub.to('cpu').detach().numpy().copy()
             embed_list.append(embed_sub)
+    del speaker_classfier
 
     embed_list = np.vstack(embed_list)
     z = stats.gaussian_kde(embed_list.T)(embed_list.T)
