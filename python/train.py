@@ -26,7 +26,7 @@ def main():
     init_logger('happy.log')
 
     model = FullModel().to(f'cuda')
-    learn_loader = DataLoader([10], range(12), range(12), batch_size=32, sp_length=1024)
+    learn_loader = DataLoader([10], range(12), range(12), batch_size=256, sp_length=1024)
     eval_loader = DataLoader([10], range(12, 16), range(12, 16), batch_size=32, sp_length=1024)
     history = train(model, (learn_loader, eval_loader), f'weights.pth', 1e-3, 6)
     logging.info('History:\n' + json.dumps(history, ensure_ascii=False, indent=4))
@@ -89,7 +89,7 @@ def learn(model, loader, optimizer, criterion):
             optimizer.step()
 
             train_loss += loss.item()
-            bar.set_postfix({'loss': '%.4f' % (train_loss / (idx + 1))})
+            bar.set_postfix({'loss': '%.8f' % (train_loss / (idx + 1))})
 
     train_loss /= len(loader) * len(true)
     return train_loss
