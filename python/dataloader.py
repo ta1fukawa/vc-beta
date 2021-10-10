@@ -13,11 +13,11 @@ class DataLoader(torch.utils.data.Dataset):
 
         if self.preload:
             assert sp_length is not None
-            self.data = np.empty((len(self.seiren_speaker_list), len(self.speaker_list), len(self.speech_list), sp_length))
+            self.data = np.empty((len(self.seiren_speaker_list), len(self.speaker_list), len(self.speech_list), sp_length, 512))
             for seiren_speaker_idx, seiren_speaker in enumerate(self.seiren_speaker_list):
                 for speaker in self.speaker_list:
                     for speech in self.speech_list:
-                        sp = np.load(f'resource/mid/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.npz', allow_pickle=True)['sp']
+                        sp = np.load(f'resource/mid/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.npz', allow_pickle=True)['sp'][:, :512]
                         sp = self._zero_padding(sp[:self.sp_length], self.sp_length)
                         self.data[seiren_speaker_idx][speaker][speech] = sp
 
