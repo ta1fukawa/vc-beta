@@ -1,6 +1,8 @@
 import csv
 import os
 
+import functools
+import threading
 import multiprocessing
 import numpy as np
 import pyworld
@@ -122,36 +124,50 @@ class FullModel(torch.nn.Module):
         return x
 
 def main():
-    pool = multiprocessing.Pool(processes=16)
-    speaker_embed_list = np.array(pool.map(get_speaker_embed, range(100)))
+    nthread = 16
+    lock = threading.Lock()
+    results = dict()
+    threads = list()
+    for thread_id in range(nthread):
+        thread = threading.Thread(target=get_speaker_embed, args=([nthread, thread_id, lock, results]))
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
+    speaker_embed_list = np.vstack([results[i] for i in range(nthread)])
     np.save(f'resource/speaker-embeds.npz', embed=speaker_embed_list)
     pass
 
-def get_speaker_embed(speaker):
-    gpu_id = speaker % 4
-    speaker_classfier = FullModel(2).to(f'cuda:{gpu_id}')
+def get_speaker_embed(nthread, thread_id, lock, results):
+    ngpus = 4
+    speaker_classfier = FullModel(2).to(f'cuda:{thread_id % ngpus}')
     speaker_classfier.load_state_dict(torch.load(f'resource/speaker-encoder.pth'))
 
-    embed_list = list()
-    for seiren_speaker in [10]:
-        for speech in range(100):
-            print(f'Processing: jvs{speaker + 1:03d} - seiren_jvs{seiren_speaker + 1:03d} - VOICEACTRESS100_{speech + 1:03d}\r', end='')
+    speaker_embed_list = list()
+    for speaker in range(thread_id * 100 // nthread, (thread_id + 1) * 100 // nthread):
+        embed_list = list()
+        for seiren_speaker in [10]:
+            for speech in range(100):
+                print(f'Processing: jvs{speaker + 1:03d} - seiren_jvs{seiren_speaker + 1:03d} - VOICEACTRESS100_{speech + 1:03d}\r', end='')
 
-            wave, sr = sf.read(f'resource/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.wav')
-            f0, sp, ap, t = wave_decompose(wave, sr)
-            
-            labels = load_csv(f'resource/jvs_ver1_fixed/jvs{seiren_speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.lab', delimiter='\t')
-            phonemes = extract_phonemes(sp, labels)
-            phonemes = torch.from_numpy(phonemes[:, :, :512]).float().to(f'cuda:{gpu_id}')
+                wave, sr = sf.read(f'resource/seiren_jvs{seiren_speaker + 1:03d}/jvs{speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.wav')
+                f0, sp, ap, t = wave_decompose(wave, sr)
+                
+                labels = load_csv(f'resource/jvs_ver1_fixed/jvs{seiren_speaker + 1:03d}/VOICEACTRESS100_{speech + 1:03d}.lab', delimiter='\t')
+                phonemes = extract_phonemes(sp, labels)
+                phonemes = torch.from_numpy(phonemes[:, :, :512]).float().to(f'cuda:{thread_id % ngpus}')
 
-            embed_sub = speaker_classfier.embed(phonemes)
-            embed_sub = embed_sub.to('cpu').detach().numpy().copy()
-            embed_list.append(embed_sub)
+                embed_sub = speaker_classfier.embed(phonemes)
+                embed_sub = embed_sub.to('cpu').detach().numpy().copy()
+                embed_list.append(embed_sub)
 
-    embed_list = np.vstack(embed_list)
-    z = stats.gaussian_kde(embed_list.T)(embed_list.T)
-    speaker_embed = embed_list[np.argmax(z)]
-    return speaker_embed
+        embed_list = np.vstack(embed_list)
+        z = stats.gaussian_kde(embed_list.T)(embed_list.T)
+        speaker_embed = embed_list[np.argmax(z)]
+        speaker_embed_list.append(speaker_embed)
+        
+    with lock:
+        results[thread_id] = speaker_embed_list
 
 def wave_decompose(wave, sr):
     f0, t = pyworld.harvest(wave, sr)
