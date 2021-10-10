@@ -89,7 +89,7 @@ def learn(model, loader, optimizer, criterion):
             optimizer.step()
 
             train_loss += loss.item()
-            bar.set_postfix({'loss': '%.4E' % (train_loss / (idx + 1))})
+            bar.set_postfix({'loss': '%.4e' % (train_loss / (idx + 1))})
 
     train_loss /= len(loader) * len(true)
     return train_loss
