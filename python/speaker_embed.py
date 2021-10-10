@@ -139,7 +139,7 @@ def main():
     np.save(f'resource/speaker-embeds.npz', embed=speaker_embed_list)
 
 def multithread(thread_id, nthread, lock, results):
-    pool = multiprocessing.Pool(processes=4)
+    pool = multiprocessing.Pool(processes=2)
     speaker_embed_list = np.array(pool.map(functools.partial(get_speaker_embed, gpu_id=thread_id), range(thread_id * 100 // nthread, (thread_id + 1) * 100 // nthread)))
     with lock: results[thread_id] = speaker_embed_list
 
@@ -162,6 +162,9 @@ def get_speaker_embed(speaker, gpu_id):
             embed_sub = speaker_classfier.embed(phonemes)
             embed_sub = embed_sub.to('cpu').detach().numpy().copy()
             embed_list.append(embed_sub)
+            
+            del phonemes
+            del embed_sub
     del speaker_classfier
     torch.cuda.empty_cache()
 
