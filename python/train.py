@@ -1,3 +1,4 @@
+import json
 import logging
 import sys
 
@@ -11,6 +12,8 @@ from models import *
 
 class FullModel(torch.nn.Module):
     def __init__(self):
+        super(FullModel, self).__init__()
+
         self.content_encoder_conv1d = ContentEncoderConv1d()
         self.decoder_conv1d = DecoderConv1d()
 
@@ -22,12 +25,11 @@ class FullModel(torch.nn.Module):
 def main():
     init_logger('happy.log')
 
-    model = FullModel()
-    learn_loader = DataLoader()
-    eval_loader = DataLoader()
+    model = FullModel().to(f'cuda')
+    learn_loader = DataLoader([10], range(12), range(12), batch_size=32, sp_length=1024)
+    eval_loader = DataLoader([10], range(12, 16), range(12, 16), batch_size=32, sp_length=1024)
     history = train(model, (learn_loader, eval_loader), f'weights.pth', 1e-3, 6)
-    
-    pass
+    logging.info('History:\n' + json.dumps(history, ensure_ascii=False, indent=4))
 
 def init_logger(log_path, mode='w', stdout=True):
     fmt = '%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s: %(message)s'
@@ -41,25 +43,23 @@ def init_logger(log_path, mode='w', stdout=True):
         logging.getLogger('').addHandler(console)
 
 def train(model, loaders, weights_path, leaning_rate, patience):
-    criterion = torch.nn.NLLLoss()
+    criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=leaning_rate)
 
     best_loss = np.Inf
     wait = 0
-    history = { key: list() for key in ['train_loss', 'train_acc', 'valid_loss', 'valid_acc'] }
+    history = { key: list() for key in ['train_loss', 'valid_loss'] }
     for epoch in range(256):
         logging.info(f'[Epoch {epoch}]')
 
-        train_loss, train_acc = learn(model, loaders[0], optimizer, criterion)
-        logging.info(f'Train loss {train_loss}, acc {100 * train_acc} %')
+        train_loss = learn(model, loaders[0], optimizer, criterion)
+        logging.info(f'Train loss {train_loss}')
 
-        valid_loss, valid_acc = valid(model, loaders[1], criterion)
-        logging.info(f'Valid loss {valid_loss}, acc {100 * valid_acc} %')
+        valid_loss = valid(model, loaders[1], criterion)
+        logging.info(f'Valid loss {valid_loss}')
 
         history['train_loss'].append(train_loss)
-        history['train_acc'].append(train_acc)
         history['valid_loss'].append(valid_loss)
-        history['valid_acc'].append(valid_acc)
 
         if valid_loss < best_loss:
             wait = 0
@@ -79,29 +79,25 @@ def learn(model, loader, optimizer, criterion):
     model.train()
 
     train_loss = 0
-    train_acc  = 0
     with tqdm.tqdm(loader, bar_format='{l_bar}{bar:24}| [{elapsed}<{remaining}{postfix}]') as bar:
         for idx, batch in enumerate(bar):
-            data, true = batch
+            data, true, spkr = batch
             optimizer.zero_grad()
-            pred = model(data)
+            pred = model(data, spkr)
             loss = criterion(pred, true)
             loss.backward()
             optimizer.step()
 
             train_loss += loss.item()
-            train_acc  += pred.argmax(dim=1).eq(true).sum().item()
-            bar.set_postfix({'loss': '%.4f' % (train_loss / (idx + 1)), 'acc': '%.2f %%' % (100 * train_acc / ((idx + 1) * len(true)))})
+            bar.set_postfix({'loss': '%.4f' % (train_loss / (idx + 1))})
 
     train_loss /= len(loader) * len(true)
-    train_acc  /= len(loader) * len(true)
-    return train_loss, train_acc
+    return train_loss
 
 def valid(model, loader, criterion):
     model.eval()
 
     valid_loss = 0
-    valid_acc  = 0
     for batch in loader:
         with torch.no_grad():
             data, true = batch
@@ -109,11 +105,9 @@ def valid(model, loader, criterion):
             loss = criterion(pred, true)
 
             valid_loss += loss.item()
-            valid_acc  += pred.argmax(dim=1).eq(true).sum().item()
 
     valid_loss /= len(loader) * len(true)
-    valid_acc  /= len(loader) * len(true)
-    return valid_loss, valid_acc
+    return valid_loss
 
 if __name__ == '__main__':
     main()
