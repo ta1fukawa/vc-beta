@@ -163,6 +163,7 @@ def get_speaker_embed(speaker, gpu_id):
             embed_sub = embed_sub.to('cpu').detach().numpy().copy()
             embed_list.append(embed_sub)
     del speaker_classfier
+    torch.cuda.empty_cache()
 
     embed_list = np.vstack(embed_list)
     z = stats.gaussian_kde(embed_list.T)(embed_list.T)
