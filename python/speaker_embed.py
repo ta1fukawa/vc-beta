@@ -1,6 +1,5 @@
 import csv
 import os
-import functools
 
 import multiprocessing
 import numpy as np
@@ -123,14 +122,12 @@ class FullModel(torch.nn.Module):
         return x
 
 def main():
-    speaker_embed_list = np.vstack(multiprocessing.Pool(processes=4).map(call_multithread, range(4)))
+    pool = multiprocessing.Pool(processes=16)
+    speaker_embed_list = np.array(pool.map(get_speaker_embed, range(100)))
     np.save(f'resource/speaker-embeds.npz', embed=speaker_embed_list)
+    pass
 
-def call_multithread(i):
-    speaker_embed_list = np.array(multiprocessing.Pool(processes=4).map(functools.partial(get_speaker_embed, gpu_id=i), range(i * 25, (i + 1) * 25)))
-    return speaker_embed_list
-
-def get_speaker_embed(speaker, gpu_id):
+def get_speaker_embed(speaker):
     gpu_id = speaker % 4
     speaker_classfier = FullModel(2).to(f'cuda:{gpu_id}')
     speaker_classfier.load_state_dict(torch.load(f'resource/speaker-encoder.pth'))
