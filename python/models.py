@@ -2,7 +2,6 @@ import warnings
 
 import numpy as np
 import torch
-from numpy.core.numeric import indices
 
 
 def test():
@@ -68,8 +67,6 @@ def test():
     print('content_embedding_lstm_with_speaker:', content_embedding_lstm_with_speaker.shape)
     target_spectrogram_lstm_with_speaker = decoder_lstm(speaker_embedding, content_embedding_lstm_with_speaker)
     print('target_spectrogram_lstm_with_speaker:', target_spectrogram_lstm_with_speaker.shape)
-
-    pass
 
 class SpeakerEncoder(torch.nn.Module):
     def __init__(self):
@@ -350,4 +347,3 @@ class DecoderLSTM(torch.nn.Module):
         x = self.linear(x)
         
         return x
-test()
