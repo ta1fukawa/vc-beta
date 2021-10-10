@@ -4,6 +4,7 @@ import sys
 
 import numpy as np
 import torch
+from torch._C import T
 import tqdm
 
 from dataloader import DataLoader
@@ -26,8 +27,8 @@ def main():
     init_logger('happy.log')
 
     model = FullModel().to(f'cuda')
-    learn_loader = DataLoader([10], range(12), range(12), batch_size=256, sp_length=1024)
-    eval_loader = DataLoader([10], range(12, 16), range(12, 16), batch_size=32, sp_length=1024)
+    learn_loader = DataLoader([10], range(12), range(12), batch_size=256, sp_length=1024, preload=True)
+    eval_loader = DataLoader([10], range(12, 16), range(12, 16), batch_size=32, sp_length=1024, preload=True)
     history = train(model, (learn_loader, eval_loader), f'weights.pth', 1e-3, 6)
     logging.info('History:\n' + json.dumps(history, ensure_ascii=False, indent=4))
 
