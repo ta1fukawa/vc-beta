@@ -1,10 +1,12 @@
 import json
 import logging
 import sys
+import os
 
 import numpy as np
 import torch
 import tqdm
+import datetime
 
 from dataloader import DataLoader
 from models import *
@@ -23,12 +25,14 @@ class FullModel(torch.nn.Module):
         return pred_sp
 
 def main():
-    init_logger('happy.log')
+    run_id = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    os.makedirs(f'dest/test-01/{run_id}', exist_ok=True)
+    init_logger(f'dest/test-01/{run_id}/general.log')
 
     model = FullModel().to(f'cuda')
-    learn_loader = DataLoader([10], range(12), range(12), batch_size=1, sp_length=1024, preload=True)
-    eval_loader = DataLoader([10], range(12, 16), range(12, 16), batch_size=1, sp_length=1024, preload=True)
-    history = train(model, (learn_loader, eval_loader), f'weights.pth', 1e-3, 6)
+    learn_loader = DataLoader([10], range(4), range(1), batch_size=1, sp_length=1024, preload=True)
+    eval_loader = DataLoader([10], range(4, 6), range(1, 2), batch_size=1, sp_length=1024, preload=True)
+    history = train(model, (learn_loader, eval_loader), f'dest/test-01/{run_id}/weights.pth', 1e-3, 6)
     logging.info('History:\n' + json.dumps(history, ensure_ascii=False, indent=4))
 
 def init_logger(log_path, mode='w', stdout=True):
@@ -100,8 +104,8 @@ def valid(model, loader, criterion):
     valid_loss = 0
     for batch in loader:
         with torch.no_grad():
-            data, true = batch
-            pred = model(data)
+            data, true, spkr = batch
+            pred = model(data, spkr)
             loss = criterion(pred, true)
 
             valid_loss += loss.item()
