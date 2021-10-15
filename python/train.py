@@ -8,7 +8,7 @@ import torch
 import tqdm
 import datetime
 
-from dataloader import DataLoader
+from dataloader import DataLoader4AE
 from models import *
 
 
@@ -16,8 +16,8 @@ class FullModel(torch.nn.Module):
     def __init__(self):
         super(FullModel, self).__init__()
 
-        self.content_encoder_conv1d = ContentEncoderConv1d()
-        self.decoder_conv1d = DecoderConv1d()
+        self.content_encoder_conv1d = ContentEncoderLSTM(16, 32)
+        self.decoder_conv1d = DecoderLSTM(16, 32)
 
     def forward(self, source_sp, target_speaker_embed):
         content_embed = self.content_encoder_conv1d(source_sp)
@@ -30,8 +30,8 @@ def main():
     init_logger(f'dest/test-01/{run_id}/general.log')
 
     model = FullModel().to(f'cuda')
-    learn_loader = DataLoader([10], range(4), range(1), batch_size=1, sp_length=1024, preload=True)
-    eval_loader = DataLoader([10], range(4, 6), range(1, 2), batch_size=1, sp_length=1024, preload=True)
+    learn_loader = DataLoader4AE([10], range(32), range(8), batch_size=1, sp_length=1024, preload=True)
+    eval_loader = DataLoader4AE([10], range(32, 40), range(8, 12), batch_size=1, sp_length=1024, preload=True)
     history = train(model, (learn_loader, eval_loader), f'dest/test-01/{run_id}/weights.pth', 1e-3, 6)
     logging.info('History:\n' + json.dumps(history, ensure_ascii=False, indent=4))
 
