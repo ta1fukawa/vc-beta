@@ -8,7 +8,7 @@ import torch
 import tqdm
 import datetime
 
-from dataloader import DataLoader4AE
+from dataloader import *
 from models import *
 
 
@@ -30,8 +30,8 @@ def main():
     init_logger(f'dest/test-01/{run_id}/general.log')
 
     model = FullModel().to(f'cuda')
-    learn_loader = DataLoader4AE([10], range(32), range(8), batch_size=1, sp_length=1024, preload=True)
-    eval_loader = DataLoader4AE([10], range(32, 40), range(8, 12), batch_size=1, sp_length=1024, preload=True)
+    learn_loader = DataLoader4FL([10], range(32), range(8), batch_size=1, sp_length=1024, preload=True)
+    eval_loader = DataLoader4FL([10], range(32, 40), range(8, 12), batch_size=1, sp_length=1024, preload=True)
     history = train(model, (learn_loader, eval_loader), f'dest/test-01/{run_id}/weights.pth', 1e-3, 6)
     logging.info('History:\n' + json.dumps(history, ensure_ascii=False, indent=4))
 

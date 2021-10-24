@@ -96,7 +96,8 @@ class DataLoader4FL(torch.utils.data.Dataset):
         self.set_seed(None)
 
     def __len__(self):
-        return (len(self.seiren_speaker_list) * len(self.speaker_list) * len(self.speech_list))**2
+        # return (len(self.seiren_speaker_list) * len(self.speaker_list) * len(self.speech_list))**2
+        return len(self.seiren_speaker_list) * len(self.speaker_list) * len(self.speech_list)
 
     def set_seed(self, seed=0):
         np.random.seed(seed if seed is not None else 0)
@@ -114,12 +115,12 @@ class DataLoader4FL(torch.utils.data.Dataset):
         speaker_embed = list()
         for i in range(self.batch_size):
             temp = self.shuffle[batch_idx * self.batch_size + i]
-            temp, source_speech_idx         = divmod(temp, len(self.speech_list))
-            temp, source_speaker_idx        = divmod(temp, len(self.speaker_list))
-            temp, source_seiren_speaker_idx = divmod(temp, len(self.seiren_speaker_list))
             temp, target_speech_idx         = divmod(temp, len(self.speech_list))
             temp, target_speaker_idx        = divmod(temp, len(self.speaker_list))
             temp, target_seiren_speaker_idx = divmod(temp, len(self.seiren_speaker_list))
+            temp, source_speech_idx         = divmod(temp, len(self.speech_list))
+            temp, source_speaker_idx        = divmod(temp, len(self.speaker_list))
+            temp, source_seiren_speaker_idx = divmod(temp, len(self.seiren_speaker_list))
 
             source_sp_i = self._load_sp(source_seiren_speaker_idx, source_speaker_idx, source_speech_idx)
             target_sp_i = self._load_sp(target_seiren_speaker_idx, target_speaker_idx, target_speech_idx)
