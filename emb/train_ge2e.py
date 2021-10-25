@@ -192,7 +192,7 @@ def train(model, loader, optimizer, criterion):
             optimizer.step()
 
             train_loss += loss.item()
-            bar.set_postfix({'loss': '%.4f' % (train_loss / batch_size / (idx + 1))})
+            bar.set_postfix({'loss': '%.4f' % (train_loss / ((idx + 1) * batch_size))})
 
     train_loss /= len(loader) * batch_size
     return train_loss

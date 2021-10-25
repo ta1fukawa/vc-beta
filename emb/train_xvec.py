@@ -109,7 +109,8 @@ def main(cfg):
 
         train_loader = DataLoader(known_person_list, train_voice_list, (cfg.person_known_size, cfg.batch_length_phoneme), cfg.dataset_path, cfg.deform_type, cfg.phonemes_length, cfg.use_mel, seed=0)
         valid_loader = DataLoader(known_person_list, check_voice_list, (cfg.person_known_size, cfg.batch_length_phoneme), cfg.dataset_path, cfg.deform_type, cfg.phonemes_length, cfg.use_mel, seed=0)
-        history = learn(model, (train_loader, valid_loader), weights_path, leaning_rate=1e-3, patience=cfg.patience)
+        unknown_valid_loader = DataLoader(unknown_person_list, check_voice_list, (cfg.person_unknown_size, cfg.batch_length_phoneme), cfg.dataset_path, cfg.deform_type, cfg.phonemes_length, cfg.use_mel, seed=0)
+        history = learn(model, (train_loader, valid_loader, unknown_valid_loader), weights_path, leaning_rate=1e-3, patience=cfg.patience)
         logging.info('History:\n' + json.dumps(history, ensure_ascii=False, indent=4))
         
         try:
@@ -152,7 +153,7 @@ def learn(model, loaders, weights_path, leaning_rate, patience):
 
     best_loss = np.Inf
     wait = 0
-    history = { key: list() for key in ['train_loss', 'train_acc', 'train_metr', 'valid_loss', 'valid_acc', 'valid_metr'] }
+    history = { key: list() for key in ['train_loss', 'train_acc', 'train_metr', 'valid_loss', 'valid_acc', 'valid_metr', 'unknown_valid_loss'] }
     for epoch in range(256):
         logging.info(f'[Epoch {epoch}]')
 
@@ -162,12 +163,16 @@ def learn(model, loaders, weights_path, leaning_rate, patience):
         valid_loss, valid_acc, valid_metr = valid(model, loaders[1], criterion, metric)
         logging.info(f'Valid loss {valid_loss}, acc {100 * valid_acc} %, ge2e {valid_metr}')
 
+        unknown_valid_loss = unknown_valid(model.embed, loaders[2], metric)
+        logging.info(f'Unknown valid ge2e {unknown_valid_loss}')
+
         history['train_loss'].append(train_loss)
         history['train_acc'].append(train_acc)
         history['train_metr'].append(train_metr)
         history['valid_loss'].append(valid_loss)
         history['valid_acc'].append(valid_acc)
         history['valid_metr'].append(valid_metr)
+        history['unknown_valid_loss'].append(unknown_valid_loss)
 
         if valid_loss < best_loss:
             wait = 0
@@ -251,6 +256,21 @@ def valid(model, loader, criterion, metric):
     valid_acc  /= len(loader) * len(true)
     valid_metr /= len(loader) * len(true)
     return valid_loss, valid_acc, valid_metr
+
+def unknown_valid(model, loader, criterion):
+    model.eval()
+
+    batch_size = len(loader[0]) * len(loader[0][0])
+    valid_loss = 0
+    for data in loader:
+        with torch.no_grad():
+            pred = model(data)
+            loss = criterion(pred)
+
+            valid_loss += loss.item()
+
+    valid_loss /= len(loader) * batch_size
+    return valid_loss
 
 def pred_(model, loader):
     model.eval()
