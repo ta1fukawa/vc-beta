@@ -16,12 +16,12 @@ class FullModel(torch.nn.Module):
     def __init__(self):
         super(FullModel, self).__init__()
 
-        self.content_encoder_conv1d = ContentEncoderLSTM(16, 32)
-        self.decoder_conv1d = DecoderLSTM(16, 32)
+        self.content_encoder = ContentEncoderConv2d()
+        self.decoder = DecoderConv2d()
 
     def forward(self, source_sp, target_speaker_embed):
-        content_embed = self.content_encoder_conv1d(source_sp)
-        pred_sp = self.decoder_conv1d(target_speaker_embed, content_embed)
+        content_embed = self.content_encoder(source_sp)
+        pred_sp = self.decoder(target_speaker_embed, content_embed, self.content_encoder.pool_indices)
         return pred_sp
 
 def main():
@@ -30,8 +30,8 @@ def main():
     init_logger(f'dest/test-01/{run_id}/general.log')
 
     model = FullModel().to(f'cuda')
-    learn_loader = DataLoader4FL([10], range(32), range(8), batch_size=1, sp_length=1024, preload=True)
-    eval_loader = DataLoader4FL([10], range(32, 40), range(8, 12), batch_size=1, sp_length=1024, preload=True)
+    learn_loader = DataLoader4FL([10], range(64),     range(16),     batch_size=1, sp_length=1024, preload=True, seed=0)
+    eval_loader  = DataLoader4FL([10], range(64, 80), range(16, 24), batch_size=1, sp_length=1024, preload=True, seed=0)
     history = train(model, (learn_loader, eval_loader), f'dest/test-01/{run_id}/weights.pth', 1e-3, 6)
     logging.info('History:\n' + json.dumps(history, ensure_ascii=False, indent=4))
 

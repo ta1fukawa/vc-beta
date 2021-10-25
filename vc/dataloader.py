@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 class DataLoader4AE(torch.utils.data.Dataset):
-    def __init__(self, seiren_speaker_list, speaker_list, speech_list, batch_size=1, sp_length=1024, preload=False):
+    def __init__(self, seiren_speaker_list, speaker_list, speech_list, batch_size=1, sp_length=1024, preload=False, seed=None):
         self.seiren_speaker_list = seiren_speaker_list
         self.speaker_list        = speaker_list
         self.speech_list         = speech_list
@@ -21,7 +21,7 @@ class DataLoader4AE(torch.utils.data.Dataset):
                         sp = self._zero_padding(sp[:self.sp_length], self.sp_length)
                         self.data[seiren_speaker_idx][speaker_idx][speech_idx] = sp
 
-        self.set_seed(None)
+        self.set_seed(seed)
 
     def __len__(self):
         return len(self.seiren_speaker_list) * len(self.speaker_list) * len(self.speech_list)
@@ -74,11 +74,11 @@ class DataLoader4AE(torch.utils.data.Dataset):
         return np.pad(x, ((0, y_pad), (0, 0)), mode='constant') if y_pad > 0 else x
 
 class DataLoader4FL(torch.utils.data.Dataset):
-    def __init__(self, seiren_speaker_list, speaker_list, speech_list, batch_size=1, sp_length=1024, preload=False):
+    def __init__(self, seiren_speaker_list, speaker_list, speech_list, batch_size=1, sp_length=1024, preload=False, seed=None):
         self.seiren_speaker_list = seiren_speaker_list
         self.speaker_list        = speaker_list
         self.speech_list         = speech_list
-        self.speaker_embeds = np.load('resource/speaker-embeds.npz', allow_pickle=True)['embed']
+        self.speaker_embeds = np.load('resource/emb/xvec_centroids.npz', allow_pickle=True)['centroids']
         self.batch_size = batch_size
         self.sp_length  = sp_length
         self.preload    = preload
@@ -93,7 +93,7 @@ class DataLoader4FL(torch.utils.data.Dataset):
                         sp = self._zero_padding(sp[:self.sp_length], self.sp_length)
                         self.data[seiren_speaker_idx][speaker_idx][speech_idx] = sp
 
-        self.set_seed(None)
+        self.set_seed(seed)
 
     def __len__(self):
         # return (len(self.seiren_speaker_list) * len(self.speaker_list) * len(self.speech_list))**2

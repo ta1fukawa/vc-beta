@@ -200,7 +200,7 @@ class ContentEncoderConv2d(torch.nn.Module):
             self.layers.append(torch.nn.Conv2d(dims[i - 1], dims[i], kernel_size=(5, 5), dilation=(1, 1), padding='same'))
             self.layers.append(torch.nn.Conv2d(dims[i],     dims[i], kernel_size=(5, 5), dilation=(1, 1), padding='same'))
             self.layers.append(torch.nn.Dropout2d(p=0.2))
-            self.layers.append(torch.nn.MaxPool2d(kernel_size=(1, 4), return_indices=True))
+            # self.layers.append(torch.nn.MaxPool2d(kernel_size=(1, 4), return_indices=True))
 
         self.last_conv = torch.nn.Conv2d(dims[-1], 128, kernel_size=(5, 5), dilation=(1, 1), padding='same')
 
@@ -211,11 +211,10 @@ class ContentEncoderConv2d(torch.nn.Module):
             speaker_embed = torch.unsqueeze(speaker_embed, 3)
             speaker_embed = speaker_embed.expand(-1, -1, content.shape[2], content.shape[3])
             x = torch.cat((content, speaker_embed), dim=1)
+            x = self.first_conv(x)
         else:
             x = content
             
-        x = self.first_conv(x)
-
         self.pool_indices = list()
         for layer in self.layers:
             if type(layer) == torch.nn.Conv2d:
@@ -239,7 +238,7 @@ class DecoderConv2d(torch.nn.Module):
 
         self.layers = torch.nn.ModuleList()
         for i in range(len(dims) - 1):
-            self.layers.append(torch.nn.MaxUnpool2d(kernel_size=(1, 4)))
+            # self.layers.append(torch.nn.MaxUnpool2d(kernel_size=(1, 4)))
             self.layers.append(torch.nn.Dropout2d(p=0.2))
             self.layers.append(torch.nn.Conv2d(dims[i], dims[i],     kernel_size=(5, 5), dilation=(1, 1), padding='same'))
             self.layers.append(torch.nn.Conv2d(dims[i], dims[i + 1], kernel_size=(5, 5), dilation=(1, 1), padding='same'))
