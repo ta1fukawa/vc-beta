@@ -49,11 +49,11 @@ def main():
     os.makedirs(f'dest/test-01/{run_id}', exist_ok=True)
     init_logger(f'dest/test-01/{run_id}/general.log')
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
-    model = SimpleModel().to('cuda')
-    learn_loader = DataLoaderVary([10], range(16),     range(16),     batch_size=1, sp_length=1024, preload=True)
-    eval_loader  = DataLoaderVary([10], range(16, 20), range(16, 20), batch_size=1, sp_length=1024, preload=True)
+    model = FullModel().to('cuda')
+    learn_loader = DataLoaderVary([10], range(64),     range(16),     batch_size=1, sp_length=1024, preload=True)
+    eval_loader  = DataLoaderVary([10], range(64, 80), range(16, 20), batch_size=1, sp_length=1024, preload=True)
     history = train(model, (learn_loader, eval_loader), f'dest/test-01/{run_id}/weights.pth', 1e-3, 6)
     logging.info('History:\n' + json.dumps(history, ensure_ascii=False, indent=4))
 

@@ -7,7 +7,7 @@ class DataLoaderSame(torch.utils.data.Dataset):
         self.speaker_list        = speaker_list
         self.speech_list         = speech_list
 
-        self.speaker_embeds = np.load('resource/emb/xvec_centroids.npz', allow_pickle=True)['centroids']
+        self.speaker_embeds = np.load('resource/emb/emb2_centroids.npz', allow_pickle=True)['centroids']
         self.speaker_embeds = self.speaker_embeds[self.speaker_list]
         self.speaker_embeds = torch.from_numpy(self.speaker_embeds).float().to('cuda')
 

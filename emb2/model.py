@@ -1,7 +1,7 @@
 import torch
 
 class DVectorModel(torch.nn.Module):
-    def __init__(self, num_layers=3, dim_input=40, dim_cell=256, dim_emb=64):
+    def __init__(self):
         super(DVectorModel, self).__init__()
         
         self.conv1a = torch.nn.Conv2d(1,  64, kernel_size=(3, 3), dilation=(1, 1), padding='same')
