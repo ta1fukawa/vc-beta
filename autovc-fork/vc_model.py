@@ -158,7 +158,7 @@ class EncoderConv2d(torch.nn.Module):
             out_channels = nchannels
             self.layers.append(torch.nn.Conv2d(in_channels, out_channels, kernel_size=5, padding=2))
             torch.nn.init.xavier_uniform_(self.layers[-1].weight, gain=torch.nn.init.calculate_gain('relu'))
-            self.layers.append(torch.nn.BatchNorm1d(out_channels))
+            self.layers.append(torch.nn.BatchNorm2d(out_channels))
 
     def forward(self, src_uttr, src_emb):
         src_emb  = torch.nn.functional.relu(self.linear(src_emb))  # (B, emb_dim)   -> (B, nsamples * nmels)
@@ -189,7 +189,7 @@ class DecoderConv2d(torch.nn.Module):
             out_channels = 1             if i == nlayers - 1 else nchannels
             self.layers.append(torch.nn.Conv2d(in_channels, out_channels, kernel_size=5, padding=2))
             torch.nn.init.xavier_uniform_(self.layers[-1].weight, gain=torch.nn.init.calculate_gain('relu'))
-            self.layers.append(torch.nn.BatchNorm1d(out_channels))
+            self.layers.append(torch.nn.BatchNorm2d(out_channels))
 
     def forward(self, x, tgt_emb):
         tgt_emb = torch.nn.functional.relu(self.linear(tgt_emb))  # (B, emb_dim)   -> (B, nsamples * nmels)
