@@ -94,7 +94,6 @@ def main():
         cxe_loss  = cxe(full_output, true)
         ge2e_loss = ge2e(emb_output.reshape(nspkrs, nuttrs, -1))
         loss = cxe_loss + alpha * ge2e_loss
-        # loss = (cxe_loss + 1) * (ge2e_loss + 1)
         losses.append(loss.item())
 
         optim.zero_grad()
@@ -107,7 +106,7 @@ def main():
             if loss.item() < best_loss:
                 best_loss = loss.item()
                 torch.save(model.state_dict(), os.path.join(work_dir, 'weights.pth'))
-                
+
             if np.mean(losses[-10:]) < best_mean_loss:
                 best_mean_loss = np.mean(losses[-10:])
                 patience = 0

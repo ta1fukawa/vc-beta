@@ -10,7 +10,7 @@ import sklearn.svm
 import torch
 import tqdm
 
-from model import XVectorConv2D
+from emb_model import FullModel
 
 
 class Utterances(object):
@@ -56,12 +56,13 @@ def main():
     init_logger(os.path.join(work_dir, 'general.log'))
 
     device = 'cuda:1'
-    emb_weight_path = './dest/emb-train/weights.pth'
+    emb_weight_path = './dest/emb-train/20211103-182019/weights.pth'
 
     nsamples = 512
 
-    model = XVectorConv2D().to(device).eval()
+    model = FullModel(100).to(device).eval()
     model.load_state_dict(torch.load(emb_weight_path))
+    model = model.embed
 
     dataset = Utterances(nsamples)
 

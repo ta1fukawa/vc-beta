@@ -40,7 +40,7 @@ class XVectorConv2D(torch.nn.Module):
         return x.max(dim=3)[0].max(dim=2)[0]
         
     def forward(self, x):
-        x = torch.unsqueeze(x, 1)
+        x = x.unsqueeze(1)
         
         x = torch.nn.functional.relu(self.conv1a(x))
         x = torch.nn.functional.relu(self.conv1b(x))
