@@ -74,7 +74,7 @@ def main():
     emb_dims = 512
 
     # model = AutoVC(16, 16).to(device).train()
-    model = AutoVCConv2d(emb_dims, nsamples, nmels)
+    model = AutoVCConv2d(emb_dims, nsamples, nmels).to(device).train()
     logging.info(model)
 
     dataset = Utterances(nitems, nsamples, nsteps)
