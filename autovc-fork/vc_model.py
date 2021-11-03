@@ -216,7 +216,7 @@ class PostnetConv2d(torch.nn.Module):
             out_channels = 1 if i == nlayers - 1 else nchannels
             self.layers.append(torch.nn.Conv2d(in_channels, out_channels, kernel_size=5, padding=2))
             torch.nn.init.xavier_uniform_(self.layers[-1].weight, gain=torch.nn.init.calculate_gain('linear'))
-            self.layers.append(torch.nn.BatchNorm1d(out_channels))
+            self.layers.append(torch.nn.BatchNorm2d(out_channels))
     
     def forward(self, tgt_uttr):
         x = tgt_uttr.unsqueeze(1)  # (B, nsamples, nmels) -> (B, 1, nsamples, nmels)
