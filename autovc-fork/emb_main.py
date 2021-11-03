@@ -1,5 +1,8 @@
 import csv
+import datetime
+import logging
 import os
+import sys
 
 import numpy as np
 import sklearn.multiclass
@@ -46,12 +49,19 @@ class Utterances(object):
             yield torch.from_numpy(np.array(uttrs)).float()
 
 def main():
+    code_id  = 'emb-main'
+    run_id   = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    work_dir = os.path.join('./dest', code_id, run_id)
+    os.makedirs(work_dir, exist_ok=True)
+    init_logger(os.path.join(work_dir, 'general.log'))
+
     device = 'cuda:1'
+    emb_weight_path = './dest/emb-train/weights.pth'
 
     nsamples = 512
 
     model = XVectorConv2D().to(device).eval()
-    model.load_state_dict(torch.load('./dest/test-03/weights.pth'))
+    model.load_state_dict(torch.load(emb_weight_path))
 
     dataset = Utterances(nsamples)
 
@@ -65,12 +75,23 @@ def main():
     est = np.array(est)
 
     emb = np.mean(est, axis=1)
-    np.save('./resource/emb/emb3_centroids.npy', emb)
+    np.save(os.path.join(work_dir, 'centroids.npy'), emb)
 
     confmat, ncorrects, ndata = calc_svm(est[:, :80], est[:, 80:])
-    print(f'Accuracy: {ncorrects / ndata} ({ncorrects}/{ndata})')
-    with open('./dest/test-03/svm_confmat.csv', 'w') as f:
+    logging.info(f'Accuracy: {ncorrects / ndata} ({ncorrects}/{ndata})')
+    with open(os.path.join(work_dir, 'svm_confmat.csv'), 'w') as f:
         csv.writer(f).writerows(confmat)
+
+def init_logger(log_path, mode='w', stdout=True):
+    fmt = '%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s: %(message)s'
+    logging.basicConfig(level=logging.DEBUG, format=fmt, filename=log_path, filemode=mode)
+
+    if stdout:
+        console = logging.StreamHandler(stream=sys.stdout)
+        console.setLevel(logging.DEBUG)
+        formatter = logging.Formatter(fmt)
+        console.setFormatter(formatter)
+        logging.getLogger('').addHandler(console)
     
 def calc_confmat(pred, true, nclasses):
     confmat = np.zeros((nclasses, nclasses))

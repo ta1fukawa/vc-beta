@@ -41,17 +41,17 @@ class Utterances(object):
 
     def __iter__(self):
         for _ in range(self.nsteps):
-            spk_idcs  = random.sample(range(len(self.data)), self.nitems * 2)
-            uttr_idcs = random.sample(range(len(self.data[0])), self.nitems)
+            spk_idcs = random.sample(range(len(self.data)), self.nitems * 2)
+            utt_idcs = random.sample(range(len(self.data[0])), self.nitems)
             src_spk_idcs = spk_idcs[:self.nitems]
             tgt_spk_idcs = spk_idcs[self.nitems:]
 
-            src_uttrs = torch.from_numpy(np.array(self.data[src_spk_idcs, uttr_idcs])).float()
-            src_embs  = torch.from_numpy(np.array(self.embs[src_spk_idcs])).float()
-            tgt_uttrs = torch.from_numpy(np.array(self.data[tgt_spk_idcs, uttr_idcs])).float()
-            tgt_embs  = torch.from_numpy(np.array(self.embs[tgt_spk_idcs])).float()
+            src_utts = torch.from_numpy(np.array(self.data[src_spk_idcs, utt_idcs])).float()
+            src_embs = torch.from_numpy(np.array(self.embs[src_spk_idcs])).float()
+            tgt_utts = torch.from_numpy(np.array(self.data[tgt_spk_idcs, utt_idcs])).float()
+            tgt_embs = torch.from_numpy(np.array(self.embs[tgt_spk_idcs])).float()
 
-            yield (src_uttrs, src_embs, tgt_uttrs, tgt_embs)
+            yield (src_utts, src_embs, tgt_utts, tgt_embs)
 
 def main():
     device = 'cuda:1'
@@ -68,6 +68,7 @@ def main():
 
     losses = []
     best_mean_loss = float('inf')
+    best_loss = float('inf')
     patience = 0
     for step, (src_uttrs, src_embs, tgt_uttrs, tgt_embs) in enumerate(dataset):
         src_uttrs = src_uttrs.to(device)
@@ -90,17 +91,20 @@ def main():
         loss.backward()
         optim.step()
 
-        if np.mean(losses[-100:]) < best_mean_loss:
-            best_mean_loss = np.mean(losses[-100:])
-            torch.save(model.state_dict(), './dest/test-04/weights.pth')
-            patience = 0
-        else:
-            patience += 1
-            if patience >= 100:
-                break
-
         if step % 100 == 0:
             print(f'Iteration: {step}, Loss: {loss.item()}')
+
+            if loss.item() < best_loss:
+                best_loss = loss.item()
+                torch.save(model.state_dict(), os.path.join(work_dir, 'weights.pth'))
+                
+            if np.mean(losses[-10:]) < best_mean_loss:
+                best_mean_loss = np.mean(losses[-10:])
+                patience = 0
+            else:
+                patience += 1
+                if patience >= 10:
+                    break
 
 if __name__ == '__main__':
     main()
