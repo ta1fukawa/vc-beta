@@ -208,7 +208,7 @@ class DecoderConv2d(torch.nn.Module):
 
 class PostnetConv2d(torch.nn.Module):
     def __init__(self, nlayers=5, nchannels=128):
-        super(Postnet, self).__init__()
+        super(PostnetConv2d, self).__init__()
 
         self.layers = torch.nn.ModuleList()
         for i in range(nlayers):
@@ -233,7 +233,7 @@ class PostnetConv2d(torch.nn.Module):
 
 class AutoVCConv2d(torch.nn.Module):
     def __init__(self, emb_dims, nsamples, nmels):
-        super(AutoVC, self).__init__()
+        super(AutoVCConv2d, self).__init__()
 
         self.encoder = EncoderConv2d(emb_dims, nsamples, nmels)
         self.decoder = DecoderConv2d(emb_dims, nsamples, nmels)
