@@ -180,24 +180,39 @@ class DecoderConv2d(torch.nn.Module):
         self.nsamples = nsamples
         self.nmels    = nmels
 
-        self.linear = torch.nn.Linear(emb_dims, nsamples * nmels)
-        torch.nn.init.xavier_uniform_(self.linear.weight, gain=torch.nn.init.calculate_gain('relu'))
+        self.linear_layers = torch.nn.ModuleList()
+        for i in range(nlayers):
+            in_channels  = emb_dims
+            out_channels = nsamples * nmels if i == nlayers - 1 else emb_dims
+            self.linear_layers.append(torch.nn.Linear(in_channels, out_channels))
+            torch.nn.init.xavier_uniform_(self.linear_layers[-1].weight, gain=torch.nn.init.calculate_gain('relu'))
+            self.linear_layers.append(torch.nn.BatchNorm1d(out_channels))
 
-        self.layers = torch.nn.ModuleList()
+        self.conv_layers = torch.nn.ModuleList()
         for i in range(nlayers):
             in_channels  = nchannels + 1 if i == 0           else nchannels
             out_channels = 1             if i == nlayers - 1 else nchannels
-            self.layers.append(torch.nn.Conv2d(in_channels, out_channels, kernel_size=5, padding=2))
-            torch.nn.init.xavier_uniform_(self.layers[-1].weight, gain=torch.nn.init.calculate_gain('relu'))
-            self.layers.append(torch.nn.BatchNorm2d(out_channels))
+            self.conv_layers.append(torch.nn.Conv2d(in_channels, out_channels, kernel_size=5, padding=2))
+            torch.nn.init.xavier_uniform_(self.conv_layers[-1].weight, gain=torch.nn.init.calculate_gain('relu'))
+            self.conv_layers.append(torch.nn.BatchNorm2d(out_channels))
 
     def forward(self, x, tgt_emb):
-        tgt_emb = torch.nn.functional.relu(self.linear(tgt_emb))  # (B, emb_dim)   -> (B, nsamples * nmels)
+        # tgt_emb = tgt_emb.unsqueeze(2).unsqueeze(3)             # (B, emb_dim) -> (B, emb_dim, 1, 1)
+        # tgt_emb = tgt_emb.expand(-1, -1, x.size(2), x.size(3))  # (B, emb_dim, nsamples, nmels)
+        # x = torch.cat([x, tgt_emb], dim=1)                      # (B, nchannels + emb_dim, nsamples, nmels)
+        # tgt_emb = torch.nn.functional.relu(self.linear(tgt_emb))  # (B, emb_dim)   -> (B, nsamples * nmels)
+
+        for layer in self.linear_layers:
+            if type(layer) == torch.nn.Linear:
+                tgt_emb = torch.nn.functional.relu(layer(tgt_emb))
+            else:
+                tgt_emb = layer(tgt_emb)
+
         tgt_emb = tgt_emb.reshape(-1, self.nsamples, self.nmels)  # (B, nsamples * nmels) -> (B, nsamples, nmels)
         tgt_emb = tgt_emb.unsqueeze(1)                            # (B, nsamples, nmels)  -> (B, 1, nsamples, nmels)
         x = torch.cat([x, tgt_emb], dim=1)                        # (B, nchannels + 1, nsamples, nmels)
 
-        for layer in self.layers:
+        for layer in self.conv_layers:
             if type(layer) == torch.nn.Conv2d:
                 x = torch.nn.functional.relu(layer(x))
             else:
