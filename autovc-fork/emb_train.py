@@ -21,7 +21,7 @@ def main():
 
     os.makedirs(WORK_DIR, exist_ok=True)
     init_logger(LOG_PATH)
-    backup_codes(['./emb_train.py', './emb_model.py'], WORK_DIR)
+    backup_codes(['./autovc-fork/emb_train.py', './autovc-fork/emb_model.py'], WORK_DIR)
 
     args = get_args()
     logging.info(args)
@@ -30,7 +30,7 @@ def main():
     model = FullModel(100).to(args.device).train()
     logging.info(model)
 
-    dataset = Utterances(args.nspkrs, args.nuttrs, args.nsmpls, args.nsteps, args.sp_path)
+    dataset = Utterances(args.nspkrs, args.nuttrs, args.nsmpls, args.nsteps, args.sp_path, args.train_spkr_rate)
     cxe     = torch.nn.CrossEntropyLoss()
     ge2e    = GE2E(loss_method='softmax')
     optim   = torch.optim.Adam(model.parameters(), lr=1e-4)
@@ -84,6 +84,7 @@ def get_args():
     parser.add_argument('--nsteps', type=int, default=100000)
 
     parser.add_argument('--alpha', type=float, default=0.1)
+    parser.add_argument('--train_spkr_rate', type=float, default=0.8)
 
     args = parser.parse_args()
     return args
@@ -105,16 +106,18 @@ def backup_codes(src_files, dest_dir):
 
 class Utterances(object):
 
-    def __init__(self, nspkrs, nuttrs, nsmpls, nsteps, path):
+    def __init__(self, nspkrs, nuttrs, nsmpls, nsteps, path, train_spkr_rate=1):
         self.nspkrs = nspkrs
         self.nuttrs = nuttrs
         self.nsmpls = nsmpls
         self.nsteps = nsteps
 
         _, dir_list, _ = next(os.walk(path))
+        train_nspkrs = int(len(dir_list) * train_spkr_rate)
+        dir_list = sorted(dir_list)[:train_nspkrs]
 
         self.data = []
-        for dir_name in sorted(dir_list):
+        for dir_name in dir_list:
             dir_path = os.path.join(path, dir_name)
             _, _, file_list = next(os.walk(dir_path))
 

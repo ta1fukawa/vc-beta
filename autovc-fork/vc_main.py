@@ -22,7 +22,7 @@ def main():
     embs = np.load('./dest/emb-main/20211104-000810/centroids.npy', allow_pickle=True)
     embs = torch.from_numpy(embs[None]).float().to(device)
     src_emb = embs[:, 0]
-    tgt_emb = embs[:, 1]
+    tgt_emb = embs[:, 0]
 
     model = AutoVCConv2d(512, 512, 80).to(device).eval()
     model.load_state_dict(torch.load('./dest/vc-train/20211104-170318/weights.pth'))
@@ -56,7 +56,7 @@ def main():
     # vocoder.load_state_dict(torch.load("./autovc/checkpoint_step001000000_ema.pth")["state_dict"])
 
     # wave = wavegen(vocoder, c=tgt_sp)
-    sf.write('./dest/test/test-04/006.wav', wave, 24000)
+    sf.write('./dest/test/test-04/007.wav', wave, 24000)
 
 def load_sp(path):
     sp = np.load(path)
