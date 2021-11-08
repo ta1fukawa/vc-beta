@@ -119,14 +119,14 @@ class Utterances(object):
     def __init__(self, nsamples):
         self.nsamples = nsamples
 
-        path = './resource/seiren_jvs011_sp'
+        path = './resource/sp/utterances'
         _, dir_list, _ = next(os.walk(path))
 
         self.data = []
         for dir_name in sorted(dir_list):
             dir_path = os.path.join(path, dir_name)
             _, _, file_list = next(os.walk(dir_path))
-            
+
             uttrs = []
             for file_name in sorted(file_list):
                 file_path = os.path.join(dir_path, file_name)

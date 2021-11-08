@@ -21,17 +21,17 @@ class XVectorConv2D(torch.nn.Module):
         self.conv1a = torch.nn.Conv2d(1,  64, kernel_size=(3, 3), dilation=(1, 1), padding='same')
         self.conv1b = torch.nn.Conv2d(64, 64, kernel_size=(3, 3), dilation=(1, 1), padding='same')
         self.drop1  = torch.nn.Dropout2d(p=0.2)
-        self.pool1  = torch.nn.MaxPool2d(kernel_size=(4, 4))
+        self.pool1  = torch.nn.MaxPool2d(kernel_size=(1, 4))
         
         self.conv2a = torch.nn.Conv2d(64,  128, kernel_size=(3, 3), dilation=(1, 1), padding='same')
         self.conv2b = torch.nn.Conv2d(128, 128, kernel_size=(3, 3), dilation=(1, 1), padding='same')
         self.drop2  = torch.nn.Dropout2d(p=0.2)
-        self.pool2  = torch.nn.MaxPool2d(kernel_size=(4, 4))
+        self.pool2  = torch.nn.MaxPool2d(kernel_size=(1, 4))
         
         self.conv3a = torch.nn.Conv2d(128, 256, kernel_size=(3, 3), dilation=(1, 1), padding='same')
         self.conv3b = torch.nn.Conv2d(256, 256, kernel_size=(3, 3), dilation=(1, 1), padding='same')
         self.drop3  = torch.nn.Dropout2d(p=0.2)
-        self.pool3  = torch.nn.MaxPool2d(kernel_size=(4, 4))
+        self.pool3  = torch.nn.MaxPool2d(kernel_size=(1, 4))
         
         self.conv4  = torch.nn.Conv2d(256, 2048, kernel_size=(3, 3), dilation=(1, 1), padding='same')
         self.line4  = torch.nn.Linear(2048, 512)

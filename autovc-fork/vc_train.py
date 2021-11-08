@@ -117,7 +117,7 @@ class Utterances(object):
         self.nsamples = nsamples
         self.nsteps   = nsteps
 
-        path = './resource/seiren_jvs011_sp'
+        path = './resource/sp/utterances'
         _, dir_list, _ = next(os.walk(path))
 
         self.data = []

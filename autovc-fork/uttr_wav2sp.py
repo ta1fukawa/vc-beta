@@ -9,6 +9,7 @@ import soundfile as sf
 def main():
     src_path = './resource/seiren_jvs011'
     tgt_path = './resource/seiren_jvs011_sp'
+    tgt_path = './resource/sp/utterances'
 
     sr      = 24000
     nfft    = 1024
