@@ -23,6 +23,7 @@ def main():
 
     os.makedirs(WORK_DIR, exist_ok=True)
     init_logger(LOG_PATH)
+    logging.info(f'Output: {WORK_DIR}')
     backup_codes(['./autovc-fork/emb_main.py', './autovc-fork/emb_model.py'], WORK_DIR)
 
     args = get_args()
@@ -32,7 +33,7 @@ def main():
     model.load_state_dict(torch.load(args.emb_weight_path))
     model = model.embed
 
-    dataset = Utterances(args.nsmpls)
+    dataset = Utterances(args.nsmpls, args.sp_path)
 
     est = []
     with tqdm.tqdm(dataset, bar_format='{l_bar}{bar:24}| [{elapsed}<{remaining}{postfix}]') as bar:
@@ -77,10 +78,11 @@ def init_logger(log_path, mode='w', stdout=True):
 def get_args():
     parser = argparse.ArgumentParser()
     
+    parser.add_argument('--sp_path', type=str, default='./resource/mel/phonemes_v5')
     parser.add_argument('--emb_weight_path', type=str, default='./dest/emb-train/20211103-182019/weights.pth')
     parser.add_argument('--device',  type=str, default='cuda:0')
 
-    parser.add_argument('--nsmpls', type=int, default=512)
+    parser.add_argument('--nsmpls', type=int, default=32)
 
     parser.add_argument('--train_spkr_rate', type=float, default=0.8)
 
@@ -116,10 +118,9 @@ def calc_svm(train_data, eval_data):
 
 class Utterances(object):
 
-    def __init__(self, nsamples):
+    def __init__(self, nsamples, path):
         self.nsamples = nsamples
 
-        path = './resource/sp/utterances'
         _, dir_list, _ = next(os.walk(path))
 
         self.data = []
@@ -140,12 +141,13 @@ class Utterances(object):
 
                 uttrs.append(uttr)
             self.data.append(uttrs)
+        self.data = np.array(self.data)
 
     def __len__(self):
         return len(self.data)
 
     def __iter__(self):
-        for i in range(len(self)):
+        for i in range(len(self.data)):
             uttrs = self.data[i]
             yield torch.from_numpy(np.array(uttrs)).float()
 

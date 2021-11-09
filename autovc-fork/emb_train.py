@@ -22,6 +22,7 @@ def main():
 
     os.makedirs(WORK_DIR, exist_ok=True)
     init_logger(LOG_PATH)
+    logging.info(f'Output: {WORK_DIR}')
     backup_codes(['./autovc-fork/emb_train.py', './autovc-fork/emb_model.py'], WORK_DIR)
 
     args = get_args()
@@ -63,12 +64,12 @@ def main():
                 best_loss = loss.item()
                 torch.save(model.state_dict(), os.path.join(WORK_DIR, 'weights.pth'))
 
-            if np.mean(losses[-10:]) < best_mean_loss:
-                best_mean_loss = np.mean(losses[-10:])
+            if np.mean(losses[-args.patience:]) < best_mean_loss:
+                best_mean_loss = np.mean(losses[-args.patience:])
                 patience = 0
             else:
                 patience += 1
-                if patience >= 10:
+                if patience >= args.patience:
                     break
 
     logging.info(f'Best mean loss: {best_mean_loss}')
@@ -86,6 +87,7 @@ def get_args():
 
     parser.add_argument('--alpha', type=float, default=0.1)
     parser.add_argument('--train_spkr_rate', type=float, default=0.8)
+    parser.add_argument('--patience', type=int, default=20)
 
     args = parser.parse_args()
     return args

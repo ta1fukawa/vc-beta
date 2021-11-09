@@ -20,6 +20,7 @@ def main():
 
     os.makedirs(WORK_DIR, exist_ok=True)
     init_logger(LOG_PATH)
+    logging.info(f'Output: {WORK_DIR}')
     backup_codes(['./autovc-fork/vc_train.py', './autovc-fork/vc_model.py'], WORK_DIR)
 
     args = get_args()
