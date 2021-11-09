@@ -76,12 +76,12 @@ def main():
 def get_args():
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--sp_path', type=str, default='./resource/sp/phonemes')
+    parser.add_argument('--sp_path', type=str, default='./resource/mel/phonemes_v5')
     parser.add_argument('--device',  type=str, default='cuda:0')
 
     parser.add_argument('--nspkrs', type=int, default=8)
-    parser.add_argument('--nuttrs', type=int, default=8)
-    parser.add_argument('--nsmpls', type=int, default=24)
+    parser.add_argument('--nuttrs', type=int, default=16)
+    parser.add_argument('--nsmpls', type=int, default=32)
     parser.add_argument('--nsteps', type=int, default=100000)
 
     parser.add_argument('--alpha', type=float, default=0.1)

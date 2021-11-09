@@ -5,6 +5,7 @@ import sys
 
 import librosa
 import numpy as np
+import pyworld
 import scipy.signal
 import soundfile as sf
 
@@ -16,12 +17,15 @@ from sample.run_segment import run_segment
 
 def main():
     src_path = './resource/wav/seiren_jvs011_slow'
-    tgt_path = './resource/sp/phonemes_v4'
+    tgt_path = './resource/spenv/phonemes_v1'
     
     julius_src_path = './resource/wav/seiren_jvs011_slow/jvs011'
     lab_yomi_path   = './resource/voiceactoress100_spaced_julius.txt'
     lab_path        = './resource/lab/seiren_jvs011_slow'
     hmm_path        = 'resource/dictation-kit-4.5/model/phone_m/jnas-mono-16mix-gid.binhmm'
+
+    use_env = True
+    use_mel = False
 
     sr      = 24000
     nfft    = 1024
@@ -71,7 +75,7 @@ def main():
 
     file_lens = {}
 
-    for dir_idx, dir_name in enumerate(sorted(dir_list)):
+    for dir_name in sorted(dir_list):
         tgtdir_path = os.path.join(tgt_path, dir_name)
         os.makedirs(tgtdir_path, exist_ok=True)
 
@@ -79,21 +83,26 @@ def main():
         _, _, file_list = next(os.walk(srcdir_path))
 
         phnm_idx = 1
-        for file_idx, file_name in enumerate(sorted(file_list)):
+        for file_name in sorted(file_list):
             file_path = os.path.join(srcdir_path, file_name)
 
             y, sr = sf.read(file_path)
-            y = scipy.signal.filtfilt(b, a, y)  # ゼロ位相フィルタ（ドリフトノイズの除去）
+            y = scipy.signal.filtfilt(b, a, y)   # ゼロ位相フィルタ（ドリフトノイズの除去）
             y = add_random_noise(y, 0.96, 1e-6)  # ノイズの追加
+            
+            if use_env:
+                f0, t  = pyworld.harvest(y, sr)        # 基本周波数の抽出
+                sp = pyworld.cheaptrick(y, f0, t, sr)  # スペクトル包絡の抽出 spectrogram (n, f)
+            else:
+                sp = np.abs(librosa.stft(y, n_fft=nfft, hop_length=hop_len, window='hann')).T  # STFT
 
-            y_stft = np.abs(librosa.stft(y, n_fft=nfft, hop_length=hop_len, window='hann')).T  # STFT
-            y_mel  = np.dot(y_stft, mel_basis)  # メルフィルタ
-            y_mel  = np.log10(np.maximum(y_mel, 1e-5))
-            y_mel  = 20 * np.log10(np.maximum(1e-5, y_mel)) - 16  # デシベル変換
-            y_mel  = np.clip((y_mel + 100) / 100, 0, 1)  # スケール調整（0～1に正規化）
+            if use_mel:
+                sp = np.dot(sp, mel_basis)                 # メルフィルタ
+            sp = 20 * np.log10(np.maximum(1e-5, sp)) - 16  # デシベル変換
+            sp = np.clip((sp + 100) / 100, 0, 1)           # スケール調整（0～1に正規化）
 
             if file_name not in file_lens:
-                file_lens[file_name] = len(y_mel)
+                file_lens[file_name] = len(sp)
 
             with open(os.path.join(lab_path, file_name.replace('.wav', '.lab')), 'r', newline='', encoding='utf-8') as f:
                 tsv_reader = csv.reader(f, delimiter='\t')
@@ -105,12 +114,12 @@ def main():
 
                 start = int(float(start) * file_lens[file_name] / float(labels[-1][1]))
                 end   = int(float(end)   * file_lens[file_name] / float(labels[-1][1]) + 1)
-                if start + 16 + 1 >= end:
+                if start + 32 + 1 >= end:
                     continue
                 
-                y_seg = y_mel[start:end]
+                sp_seg = sp[start:end]
                 tgt_file_path = os.path.join(tgtdir_path, f'phoneme_{phnm_idx:04d}.npy')
-                np.save(tgt_file_path, y_seg.astype(np.float32), allow_pickle=False)
+                np.save(tgt_file_path, sp_seg.astype(np.float32), allow_pickle=False)
 
                 phnm_idx += 1
 
