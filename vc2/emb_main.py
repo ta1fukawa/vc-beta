@@ -78,7 +78,7 @@ def init_logger(log_path, mode='w', stdout=True):
 def get_args():
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--sp_path', type=str, default='./resource/mel/phonemes_v5')
+    parser.add_argument('--sp_path', type=str, default='./resource/sp/phonemes_v1')
     parser.add_argument('--emb_weight_path', type=str, default='./dest/emb-train/20211103-182019/weights.pth')
     parser.add_argument('--device',  type=str, default='cuda:0')
 

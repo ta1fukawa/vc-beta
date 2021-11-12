@@ -1,5 +1,4 @@
 import argparse
-import csv
 import datetime
 import logging
 import os
@@ -37,8 +36,6 @@ def main():
     ge2e    = GE2E(loss_method='softmax')
     optim   = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    losses = []
-    best_mean_loss = float('inf')
     best_loss = float('inf')
     patience = 0
     for step, (data, true) in enumerate(dataset):
@@ -51,33 +48,42 @@ def main():
         cxe_loss  = cxe(full_output, true)
         ge2e_loss = ge2e(emb_output.reshape(args.nspkrs, args.nuttrs, -1))
         loss = cxe_loss + args.alpha * ge2e_loss
-        losses.append(loss.item())
 
         optim.zero_grad()
         loss.backward()
         optim.step()
 
         if step % 100 == 0:
-            logging.info(f'Iteration: {step}, Loss: {loss.item()} (CXE: {cxe_loss.item()}, GE2E: {ge2e_loss.item()})')
+            logging.info(f'[Itreration: {step}]')
+            logging.info(f'TRAIN--- Loss: {loss.item():.12f} = CXE(={cxe_loss.item():.12f}) + {args.alpha} * GE2E(={ge2e_loss.item():.12f})')
 
-            if loss.item() < best_loss:
-                best_loss = loss.item()
-                torch.save(model.state_dict(), os.path.join(WORK_DIR, 'weights.pth'))
+            eval_data, eval_true = dataset.get_data(eval_flag=True, nspkrs=20, nuttrs=8)
+            eval_data = eval_data.to(args.device)
+            eval_true = eval_true.to(args.device)
 
-            if np.mean(losses[-args.patience:]) < best_mean_loss:
-                best_mean_loss = np.mean(losses[-args.patience:])
+            eval_emb_output  = model.embed(eval_data)
+
+            eval_ge2e_loss = ge2e(eval_emb_output.reshape(args.nspkrs, args.nuttrs, -1))
+
+            logging.info(f'EVAL --- GE2E: {eval_ge2e_loss.item():.12f}')
+
+            if eval_ge2e_loss.item() < best_loss:
                 patience = 0
+                best_loss = eval_ge2e_loss.item()
+                logging.info(f'Improved.')
+                torch.save(model.state_dict(), os.path.join(WORK_DIR, 'weights.pth'))
             else:
                 patience += 1
+                logging.info(f'No improvement. Patience: {patience} / {args.patience}')
                 if patience >= args.patience:
                     break
 
-    logging.info(f'Best mean loss: {best_mean_loss}')
+    logging.info(f'Best loss: {best_loss}')
 
 def get_args():
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--sp_path', type=str, default='./resource/mel/phonemes_v5')
+    parser.add_argument('--sp_path', type=str, default='./resource/sp/phonemes_v1')
     parser.add_argument('--device',  type=str, default='cuda:0')
 
     parser.add_argument('--nspkrs', type=int, default=8)
@@ -117,10 +123,11 @@ class Utterances(object):
 
         _, dir_list, _ = next(os.walk(path))
         train_nspkrs = int(len(dir_list) * train_spkr_rate)
-        dir_list = sorted(dir_list)[:train_nspkrs]
+        self.train_speaker_range = range(0,            train_nspkrs)
+        self.eval_speaker_range  = range(train_nspkrs, len(dir_list))
 
         self.data = []
-        for dir_name in dir_list:
+        for dir_name in sorted(dir_list):
             dir_path = os.path.join(path, dir_name)
             _, _, file_list = next(os.walk(dir_path))
 
@@ -141,16 +148,27 @@ class Utterances(object):
 
     def __iter__(self):
         for _ in range(self.nsteps):
-            spk_idcs = random.sample(range(len(self.data)), self.nspkrs)
-            spks = self.data[spk_idcs]
-            batch = []
-            for spk in spks:
-                utt_idcs = random.sample(range(len(spk)), self.nuttrs)
-                utts = spk[utt_idcs]
-                batch.extend(utts)
-            batch = np.array(batch)
-            spk_labels = np.repeat(spk_idcs, self.nuttrs)
-            yield torch.from_numpy(batch).float(), torch.from_numpy(spk_labels).long()
+            yield self.get_data()
+
+    def get_data(self, eval_flag=False, nspkrs=None, nuttrs=None):
+        if nspkrs is None:
+            nspkrs = self.nspkrs
+        if nuttrs is None:
+            nuttrs = self.nuttrs
+
+        spk_idcs = random.sample(
+            self.train_speaker_range if not eval_flag else self.eval_speaker_range,
+            self.nspkrs
+        )
+        spks = self.data[spk_idcs]
+        batch = []
+        for spk in spks:
+            utt_idcs = random.sample(range(len(spk)), self.nuttrs)
+            utts = spk[utt_idcs]
+            batch.extend(utts)
+        batch = np.array(batch)
+        spk_labels = np.repeat(spk_idcs, self.nuttrs)
+        return torch.from_numpy(batch).float(), torch.from_numpy(spk_labels).long()
 
 if __name__ == '__main__':
     main()
