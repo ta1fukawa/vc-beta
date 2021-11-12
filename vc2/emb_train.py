@@ -22,7 +22,7 @@ def main():
     os.makedirs(WORK_DIR, exist_ok=True)
     init_logger(LOG_PATH)
     logging.info(f'Output: {WORK_DIR}')
-    backup_codes(['./autovc-fork/emb_train.py', './autovc-fork/emb_model.py'], WORK_DIR)
+    backup_codes(['./vc2/emb_train.py', './vc2/emb_model.py'], WORK_DIR)
 
     args = get_args()
     logging.info(args)
