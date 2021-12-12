@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import torch
 
-from vc_model import AutoVCConv2d
+from vc_model import AutoVC, AutoVCConv2d
 
 
 def main():
@@ -26,8 +26,8 @@ def main():
     args = get_args()
     logging.info(args)
 
-    # model = AutoVC(16, 16).to(args.device).train()
-    model = AutoVCConv2d(args.emb_dims, args.nsamples, args.nmels).to(args.device).train()
+    model = AutoVC(args.dim_neck, args.skip_len).to(args.device).train()
+    # model = AutoVCConv2d(args.emb_dims, args.nsamples, args.nmels, args.nlayers, args.postnet_nlayers, args.nchannels).to(args.device).train()
     logging.info(model)
 
     dataset = Utterances(args.nitems, args.nsamples, args.nsteps, args.emb_path)
@@ -90,6 +90,11 @@ def get_args():
     parser.add_argument('--nmels',    type=int, default=80)
     parser.add_argument('--emb_dims', type=int, default=512)
     parser.add_argument('--nsteps',   type=int, default=100000)
+    parser.add_argument('--nlayers',  type=int, default=3)
+    parser.add_argument('--postnet_nlayers', type=int, default=5)
+    parser.add_argument('--nchannels',type=int, default=128)
+    parser.add_argument('--dim_neck', type=int, default=64)
+    parser.add_argument('--skip_len', type=int, default=4)
 
     parser.add_argument('--same_flag', type=bool, default=False)
 

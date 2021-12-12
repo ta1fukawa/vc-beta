@@ -124,8 +124,12 @@ class AutoVC(torch.nn.Module):
         self.decoder = Decoder(dim_neck)
         self.postnet = Postnet()
 
-    def forward(self, src_uttr, src_emb, tgt_emb):
-        codes = self.encoder(src_uttr, src_emb)
+    def forward(self,
+        src_uttr,  # shape: (B, nsamples, nmels)
+        src_emb,   # shape: (B, emb_dim)
+        tgt_emb    # shape: (B, emb_dim)
+    ):
+        codes = self.encoder(src_uttr, src_emb)  # shape: (nsamples / skip_len, B, dim_neck * 2)
 
         tmp = []
         for code in codes:
@@ -160,7 +164,7 @@ class EncoderConv2d(torch.nn.Module):
             torch.nn.init.xavier_uniform_(layers[-1].weight, gain=torch.nn.init.calculate_gain('relu'))
             layers.append(torch.nn.ReLU())
             layers.append(torch.nn.BatchNorm2d(out_channels))
-            layers.append(torch.nn.MaxPool2d(kernel_size=2))
+            layers.append(torch.nn.MaxPool2d(kernel_size=(4, 2)))
         self.layers = torch.nn.Sequential(*layers)
 
     def forward(self, src_uttr, src_emb):
@@ -181,22 +185,21 @@ class DecoderConv2d(torch.nn.Module):
         self.nlayers   = nlayers
         self.nchannels = nchannels
 
-        self.linear_layers = torch.nn.ModuleList()
+        in_features  = emb_dims
+        out_features = nmels * nchannels // 2
+        self.linear_layer = torch.nn.Sequential(
+            torch.nn.Linear(in_features, out_features),
+            torch.nn.ReLU(),
+            torch.nn.BatchNorm1d(out_features),
+        )
+        torch.nn.init.xavier_uniform_(self.linear_layer[0].weight, gain=torch.nn.init.calculate_gain('relu'))
+
         self.conv_layers = torch.nn.ModuleList()
         for i in reversed(range(nlayers)):
-            in_features  = emb_dims
-            out_features = nmels * nchannels // 2
-            self.linear_layers.append(torch.nn.Sequential(
-                torch.nn.Linear(in_features, out_features),
-                torch.nn.ReLU(),
-                torch.nn.BatchNorm1d(out_features),
-            ))
-            torch.nn.init.xavier_uniform_(self.linear_layers[-1][0].weight, gain=torch.nn.init.calculate_gain('relu'))
-
-            in_channels  = 2 * nchannels * 2**i
+            in_channels  = 2 * nchannels * 2**i if i == nlayers - 1 else nchannels * 2**i
             out_channels = 1 if i == 0 else nchannels * 2**(i - 1)
             self.conv_layers.append(torch.nn.Sequential(
-                torch.nn.Upsample(scale_factor=2),
+                torch.nn.Upsample(scale_factor=(4, 2)),
                 torch.nn.Conv2d(in_channels, out_channels, kernel_size=5, padding=2),
                 torch.nn.ReLU(),
                 torch.nn.BatchNorm2d(out_channels),
@@ -204,10 +207,11 @@ class DecoderConv2d(torch.nn.Module):
             torch.nn.init.xavier_uniform_(self.conv_layers[-1][1].weight, gain=torch.nn.init.calculate_gain('relu'))
 
     def forward(self, x, tgt_emb):
-        for linear, conv in zip(self.linear_layers, self.conv_layers):
-            e = linear(tgt_emb)
-            e = e.reshape(-1, x.size(1), 1, x.size(3)).expand(-1, -1, x.size(2), -1)
-            x = torch.cat([x, e], dim=1)
+        e = self.linear_layer(tgt_emb)
+        e = e.reshape(-1, x.size(1), 1, x.size(3)).expand(-1, -1, x.size(2), -1)
+        x = torch.cat([x, e], dim=1)
+
+        for conv in self.conv_layers:
             x = conv(x)
 
         tgt_uttr = x.squeeze(1)  # (B, nsamples, nmels)
@@ -239,12 +243,12 @@ class PostnetConv2d(torch.nn.Module):
         return tgt_psnt
 
 class AutoVCConv2d(torch.nn.Module):
-    def __init__(self, emb_dims, nsamples, nmels):
+    def __init__(self, emb_dims, nsamples, nmels, nlayers=3, postnet_nlayers=5, nchannels=128):
         super(AutoVCConv2d, self).__init__()
 
-        self.encoder = EncoderConv2d(emb_dims, nsamples, nmels)
-        self.decoder = DecoderConv2d(emb_dims, nsamples, nmels)
-        self.postnet = PostnetConv2d()
+        self.encoder = EncoderConv2d(emb_dims, nsamples, nmels, nlayers, nchannels)
+        self.decoder = DecoderConv2d(emb_dims, nsamples, nmels, nlayers, nchannels)
+        self.postnet = PostnetConv2d(postnet_nlayers, nchannels)
 
     def forward(self, src_uttr, src_emb, tgt_emb):
         emb = self.encoder(src_uttr, src_emb)
