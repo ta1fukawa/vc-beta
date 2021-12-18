@@ -79,6 +79,9 @@ class ContentEncoder(torch.nn.Module):
     def __init__(self, dim_in, dim_hidden, dim_neck, dim_emb, n_layers, n_lstm_layers, kernel_size, stride=1, dilation=1, activation='relu', activation_params=None):
         super(ContentEncoder, self).__init__()
 
+        if activation_params is None:
+            activation_params = {}
+
         self.conv_layers = torch.nn.ModuleList([torch.nn.Sequential(
             Conv1d(
                 dim_in + dim_emb if i == 0 else dim_hidden,
@@ -127,6 +130,9 @@ class Decoder(torch.nn.Module):
     def __init__(self, dim_in, dim_hidden, dim_out, n_layers, n_lstm_layers, kernel_size, stride=1, dilation=1, activation='relu', activation_params=None):
         super(Decoder, self).__init__()
 
+        if activation_params is None:
+            activation_params = {}
+
         self.conv_layers = torch.nn.ModuleList([torch.nn.Sequential(
             Conv1d(
                 dim_in,
@@ -159,6 +165,9 @@ class Decoder(torch.nn.Module):
 class PostNet(torch.nn.Module):
     def __init__(self, dim_in, dim_hidden, dim_out, n_layers, kernel_size, stride=1, dilation=1, activation='tanh', activation_params=None):
         super(PostNet, self).__init__()
+
+        if activation_params is None:
+            activation_params = {}
 
         self.conv_layers = torch.nn.ModuleList([torch.nn.Sequential(
             Conv1d(

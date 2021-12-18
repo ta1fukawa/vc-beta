@@ -1,7 +1,8 @@
 autovc:
-  rec_weight: 1
-  pst_weight: 1
-  cnt_weight: 1
+  weight:
+    rec: 1
+    pst: 1
+    cnt: 1
   config:
     content_encoder:
       dim_in: 80

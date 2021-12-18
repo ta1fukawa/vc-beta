@@ -3,14 +3,14 @@ import datetime
 import pathlib
 import sys
 
-import torch
+import torch, torch.utils.tensorboard
 import tqdm
 import yaml
 
 import model
 import dataset
 
-def main(mel_dir, embed_dir, net_path, dest_dir, config_path):
+def main(mel_dir, embed_dir, dest_dir, config_path, model_path, weight_path):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     config = yaml.load(config_path.read_text(), Loader=yaml.FullLoader)
     run_id = datetime.datetime.now().strftime("%Y-%m-%d/%H-%M-%S")
@@ -20,16 +20,22 @@ def main(mel_dir, embed_dir, net_path, dest_dir, config_path):
 
     sw = torch.utils.tensorboard.SummaryWriter(dest_dir)
 
-    if net_path is not None:
-        net = torch.load(net_path).to(device)
+    if model_path is not None:
+        net = torch.load(model_path).to(device)
     else:
-        net = model.AutoVC(**config['autovc']).to(device)
+        net = model.AutoVC(config['autovc']['config']).to(device)
+
+    if weight_path is not None:
+        net.load_state_dict(torch.load(weight_path))
 
     def creterion(src_mel, src_cnt, rec_mel, pst_mel, pst_cnt):
+        weight = config['autovc']['weight']
+
         rec_loss = torch.nn.functional.mse_loss(rec_mel, src_mel)
         pst_loss = torch.nn.functional.mse_loss(pst_mel, src_mel)
         cnt_loss = torch.nn.functional.l1_loss(pst_cnt, src_cnt)
-        loss = config['autovc']['rec_weight'] * rec_loss + config['autovc']['pst_weight'] * pst_loss + config['autovc']['cnt_weight'] * cnt_loss
+        loss = weight['rec'] * rec_loss + weight['pst'] * pst_loss + weight['cnt'] * cnt_loss
+        
         return loss, (rec_loss, pst_loss, cnt_loss)
 
     def train(net, optimizer, train_loader, epoch, sw):
@@ -74,20 +80,21 @@ def main(mel_dir, embed_dir, net_path, dest_dir, config_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert wav to mel spectrogram')
-    parser.add_argument('mel_dir',     type=pathlib.Path, help='directory of mel spectrograms')
-    parser.add_argument('embed_dir',   type=pathlib.Path, help='directory of embeddings')
-    parser.add_argument('dest_dir',    type=pathlib.Path, help='destination directory')
-    parser.add_argument('config_path', type=pathlib.Path, help='path to config')
-    parser.add_argument('--net_path',  type=pathlib.Path, help='path to encoder', default=None)
+    parser.add_argument('mel_dir',       type=pathlib.Path, help='directory of mel spectrograms')
+    parser.add_argument('embed_dir',     type=pathlib.Path, help='directory of embeddings')
+    parser.add_argument('dest_dir',      type=pathlib.Path, help='destination directory')
+    parser.add_argument('config_path',   type=pathlib.Path, help='path to config')
+    parser.add_argument('--model_path',  type=pathlib.Path, help='path to network model')
+    parser.add_argument('--weight_path', type=pathlib.Path, help='path to network weight')
 
     if 'debugpy' in sys.modules:
         args = parser.parse_args([
             'vc3/mel-jvs',
             'vc3/embed-jvs',
-            'vc3/dest'
-            'vc3/train.yaml'
+            'vc3/dest',
+            'vc3/train.yaml',
         ])
     else:
-        args = parser.parse_args()
+        args = parser.parse_args([])
 
     main(**vars(args))

@@ -94,9 +94,9 @@ if __name__ == '__main__':
             'vc3/mel-jvs',
             'vc3/embed-jvs',
             'autovc2/dvector.pt',
-            'vc3/preprocess.yaml'
+            'vc3/preprocess.yaml',
         ])
     else:
-        args = parser.parse_args()
+        args = parser.parse_args([])
 
     main(**vars(args))
