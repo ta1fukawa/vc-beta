@@ -70,7 +70,7 @@ class Encoder(torch.nn.Module):
 class Decoder(torch.nn.Module):
     def __init__(self, dim_neck):
         super(Decoder, self).__init__()
-        
+
         self.lstm1 = torch.nn.LSTM(dim_neck * 2 + 512, 512, 1, batch_first=True)
 
         self.convs = torch.nn.ModuleList()
@@ -80,7 +80,7 @@ class Decoder(torch.nn.Module):
                 torch.nn.BatchNorm1d(512),
             )
             self.convs.append(conv)
-        
+
         self.lstm2 = torch.nn.LSTM(512, 1024, 2, batch_first=True)
         self.line = LinearNorm(1024, 80)
 

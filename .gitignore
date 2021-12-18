@@ -136,3 +136,4 @@ python/julius4seg
 dest/
 
 Pipfile
+*.pt

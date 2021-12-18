@@ -1,0 +1,15 @@
+wave2mel:
+  sample_rate: 24000
+  norm_db: -3.0
+  sil_threshold: 1.0
+  sil_duration: 0.1
+  fft_window_ms: 50.0
+  fft_hop_ms: 12.5
+  n_fft: 2048
+  f_min: 50.0
+  n_mels: 80
+  preemph: 0.97
+  ref_db: 20.0
+  dc_db: 100.0
+mel2embed:
+  seg_len: 128

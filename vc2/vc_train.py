@@ -48,7 +48,7 @@ def main():
             tgt_embs  = tgt_embs.to(args.device)
 
         y_uttr, y_psnt, code_real = model(src_uttrs, src_embs, tgt_embs)
-        
+
         loss_uttr = torch.nn.functional.mse_loss(y_uttr, tgt_uttrs)
         loss_psnt = torch.nn.functional.mse_loss(y_psnt, tgt_uttrs)
 
