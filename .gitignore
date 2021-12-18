@@ -137,3 +137,5 @@ dest/
 
 Pipfile
 *.pt
+*.pth
+*.0

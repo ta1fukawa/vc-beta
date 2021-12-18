@@ -1,5 +1,6 @@
 import torch
-import numpy as np
+
+import common
 
 class MelEmbLoader(torch.utils.data.Dataset):
     def __init__(self, mel_dir, embed_dir, embed_dim, seg_len):
@@ -18,10 +19,6 @@ class MelEmbLoader(torch.utils.data.Dataset):
         src_mel = torch.load(self.mel_files[idx])
         src_emb = torch.load(self.embed_files[idx])
 
-        if len(src_mel) < self.seg_len:
-            len_pad = self.seg_len - len(src_mel)
-            src_mel = torch.cat((src_mel, torch.zeros(len_pad, self.embed_dim)))
-        else:
-            src_mel = src_mel[:self.seg_len]
+        src_mel = common.pad_seq(src_mel, self.seg_len)
 
         return src_mel, src_emb

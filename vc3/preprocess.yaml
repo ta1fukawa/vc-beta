@@ -11,5 +11,6 @@ wave2mel:
   preemph: 0.97
   ref_db: 20.0
   dc_db: 100.0
+
 mel2embed:
   seg_len: 128

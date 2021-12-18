@@ -22,6 +22,7 @@ def main(mel_dir, embed_dir, dest_dir, config_path, model_path, weight_path):
 
     if model_path is not None:
         net = torch.load(model_path).to(device)
+        torch.save(net, dest_dir / 'model.pt')
     else:
         net = model.AutoVC(config['autovc']['config']).to(device)
 
@@ -35,7 +36,7 @@ def main(mel_dir, embed_dir, dest_dir, config_path, model_path, weight_path):
         pst_loss = torch.nn.functional.mse_loss(pst_mel, src_mel)
         cnt_loss = torch.nn.functional.l1_loss(pst_cnt, src_cnt)
         loss = weight['rec'] * rec_loss + weight['pst'] * pst_loss + weight['cnt'] * cnt_loss
-        
+
         return loss, (rec_loss, pst_loss, cnt_loss)
 
     def train(net, optimizer, train_loader, epoch, sw):
@@ -56,10 +57,10 @@ def main(mel_dir, embed_dir, dest_dir, config_path, model_path, weight_path):
                 sw.add_scalar('rec_loss', loss_detail[0].item(), step + epoch * len(train_loader))
                 sw.add_scalar('pst_loss', loss_detail[1].item(), step + epoch * len(train_loader))
                 sw.add_scalar('cnt_loss', loss_detail[2].item(), step + epoch * len(train_loader))
-                
+
                 pbar.set_description(f'Epoch {epoch}')
                 pbar.set_postfix(loss=loss.item())
-    
+
     train_loader = torch.utils.data.DataLoader(
         dataset.MelEmbLoader(mel_dir, embed_dir, **config['data']),
         batch_size=config['train']['batch_size'],
@@ -75,13 +76,13 @@ def main(mel_dir, embed_dir, dest_dir, config_path, model_path, weight_path):
         train(net, optimizer, train_loader, epoch, sw)
         scheduler.step()
 
-    torch.save(net.state_dict(), dest_dir / 'model.pth')
+    torch.save(net.state_dict(), dest_dir / 'weight.pt')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert wav to mel spectrogram')
-    parser.add_argument('mel_dir',       type=pathlib.Path, help='directory of mel spectrograms')
-    parser.add_argument('embed_dir',     type=pathlib.Path, help='directory of embeddings')
-    parser.add_argument('dest_dir',      type=pathlib.Path, help='destination directory')
+    parser.add_argument('mel_dir',       type=pathlib.Path, help='path to directory of mel spectrograms')
+    parser.add_argument('embed_dir',     type=pathlib.Path, help='path to directory of embeddings')
+    parser.add_argument('dest_dir',      type=pathlib.Path, help='path to destination directory')
     parser.add_argument('config_path',   type=pathlib.Path, help='path to config')
     parser.add_argument('--model_path',  type=pathlib.Path, help='path to network model')
     parser.add_argument('--weight_path', type=pathlib.Path, help='path to network weight')
@@ -90,8 +91,8 @@ if __name__ == '__main__':
         args = parser.parse_args([
             'vc3/mel-jvs',
             'vc3/embed-jvs',
-            'vc3/dest',
-            'vc3/train.yaml',
+            'vc3/train',
+            'vc3/training.yaml',
         ])
     else:
         args = parser.parse_args([])
