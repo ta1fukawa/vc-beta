@@ -4,9 +4,43 @@ autovc:
   cnt_weight: 1
   config:
     content_encoder:
+      dim_in: 80
+      dim_hidden: 512
+      dim_neck: 16
+      dim_emb: 256
+      n_layers: 3
+      n_lstm_layers: 2
+      kernel_size: 5
+      stride: 1
+      dilation: 1
+      activation: 'relu'
+      activation_params:
     prenet:
+      dim_neck: 16
+      dim_emb: 256
+      dim_out: 512
+      n_layers: 1
     decoder:
+      dim_in: 512
+      dim_hidden: 1024
+      dim_out: 80
+      n_layers: 3
+      n_lstm_layers: 2
+      kernel_size: 5
+      stride: 1
+      dilation: 1
+      activation: 'relu'
+      activation_params:
     postnet:
+      dim_in: 80
+      dim_hidden: 512
+      dim_out: 80
+      n_layers: 5
+      kernel_size: 5
+      stride: 1
+      dilation: 1
+      activation: 'tanh'
+      activation_params:
 embed:
   embed_dim: 80
 train:

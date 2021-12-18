@@ -15,8 +15,6 @@ def get_activation(name, **kwargs):
         return torch.nn.Tanh(**kwargs)
     elif name == 'softmax':
         return torch.nn.Softmax(**kwargs)
-    elif name == 'linear':
-        return torch.nn.Linear(**kwargs)
     else:
         raise ValueError(f'Unknown activation function: {name}')
 
@@ -78,26 +76,22 @@ class AutoVC(torch.nn.Module):
         return src_cnt, rec_mel, pst_mel, pst_cnt
 
 class ContentEncoder(torch.nn.Module):
-    def __init__(self, dim_in, dim_hidden, dim_neck, dim_emb, n_layers, n_lstm_layers, kernel_size, stride, dilation, activation='relu'):
+    def __init__(self, dim_in, dim_hidden, dim_neck, dim_emb, n_layers, n_lstm_layers, kernel_size, stride=1, dilation=1, activation='relu', activation_params=None):
         super(ContentEncoder, self).__init__()
 
-        self.conv_layers = torch.nn.ModuleList(
-            [
-                torch.nn.Sequential(
-                    Conv1d(
-                        dim_in + dim_emb if i == 0 else dim_hidden,
-                        dim_hidden,
-                        kernel_size=kernel_size,
-                        stride=stride,
-                        padding='same',
-                        dilation=dilation,
-                        w_init_gain=activation
-                    ),
-                    torch.nn.BatchNorm1d(dim_hidden),
-                    get_activation(activation),
-                ) for i in range(n_layers)
-            ]
-        )
+        self.conv_layers = torch.nn.ModuleList([torch.nn.Sequential(
+            Conv1d(
+                dim_in + dim_emb if i == 0 else dim_hidden,
+                dim_hidden,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding='same',
+                dilation=dilation,
+                w_init_gain=activation
+            ),
+            torch.nn.BatchNorm1d(dim_hidden),
+            get_activation(activation, **activation_params)
+        ) for i in range(n_layers)])
 
         self.lstm = torch.nn.LSTM(dim_hidden, dim_neck, n_lstm_layers, batch_first=True, bidirectional=True)
 
@@ -130,26 +124,22 @@ class PreNet(torch.nn.Module):
         return mid
 
 class Decoder(torch.nn.Module):
-    def __init__(self, dim_in, dim_hidden, dim_out, n_layers, n_lstm_layers, kernel_size, stride, dilation, activation='relu'):
+    def __init__(self, dim_in, dim_hidden, dim_out, n_layers, n_lstm_layers, kernel_size, stride=1, dilation=1, activation='relu', activation_params=None):
         super(Decoder, self).__init__()
 
-        self.conv_layers = torch.nn.ModuleList(
-            [
-                torch.nn.Sequential(
-                    Conv1d(
-                        dim_in,
-                        dim_in,
-                        kernel_size=kernel_size,
-                        stride=stride,
-                        padding='same',
-                        dilation=dilation,
-                        w_init_gain=activation
-                    ),
-                    torch.nn.BatchNorm1d(dim_in),
-                    get_activation(activation),
-                ) for _ in range(n_layers)
-            ]
-        )
+        self.conv_layers = torch.nn.ModuleList([torch.nn.Sequential(
+            Conv1d(
+                dim_in,
+                dim_in,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding='same',
+                dilation=dilation,
+                w_init_gain=activation
+            ),
+            torch.nn.BatchNorm1d(dim_in),
+            get_activation(activation, **activation_params),
+        ) for _ in range(n_layers)])
 
         self.lstm   = torch.nn.LSTM(dim_in, dim_hidden, n_lstm_layers, batch_first=True)
         self.linear = torch.nn.Linear(dim_hidden, dim_out)
@@ -167,27 +157,23 @@ class Decoder(torch.nn.Module):
         return mel
 
 class PostNet(torch.nn.Module):
-    def __init__(self, dim_in, dim_hidden, dim_out, n_layers, kernel_size, stride, dilation, activation='tanh'):
+    def __init__(self, dim_in, dim_hidden, dim_out, n_layers, kernel_size, stride=1, dilation=1, activation='tanh', activation_params=None):
         super(PostNet, self).__init__()
 
-        self.conv_layers = torch.nn.ModuleList(
-            [
-                torch.nn.Sequential(
-                    Conv1d(
-                        dim_in if i == 0 else dim_hidden,
-                        dim_hidden if i != n_layers - 1 else dim_out,
-                        kernel_size=kernel_size,
-                        stride=stride,
-                        padding='same',
-                        dilation=dilation,
-                        w_init_gain=activation if i != n_layers - 1 else 'linear'
-                    ),
-                    torch.nn.BatchNorm1d(dim_in),
-                    get_activation(activation),
-                ) for i in range(n_layers)
-            ]
-        )
-    
+        self.conv_layers = torch.nn.ModuleList([torch.nn.Sequential(
+            Conv1d(
+                dim_in if i == 0 else dim_hidden,
+                dim_hidden if i != n_layers - 1 else dim_out,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding='same',
+                dilation=dilation,
+                w_init_gain=activation if i != n_layers - 1 else 'linear'
+            ),
+            torch.nn.BatchNorm1d(dim_in),
+            get_activation(activation, **activation_params),
+        ) for i in range(n_layers)])
+
     def forward(self, mel):
         for conv in self.conv_layers:
             mel = conv(mel)
