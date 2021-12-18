@@ -1,3 +1,6 @@
+data:
+  embed_dim: 80
+  seg_len: 128
 autovc:
   weight:
     rec: 1
@@ -9,6 +12,7 @@ autovc:
       dim_hidden: 512
       dim_neck: 16
       dim_emb: 256
+      lstm_stride: 16
       n_layers: 3
       n_lstm_layers: 2
       kernel_size: 5
@@ -42,8 +46,6 @@ autovc:
       dilation: 1
       activation: 'tanh'
       activation_params:
-embed:
-  embed_dim: 80
 train:
   batch_size: 2
   num_workers: 0

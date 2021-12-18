@@ -41,32 +41,31 @@ def main(mel_dir, embed_dir, dest_dir, config_path, model_path, weight_path):
     def train(net, optimizer, train_loader, epoch, sw):
         net.train()
 
-        pbar = tqdm.auto.trange(len(train_loader))
+        with tqdm.tqdm(train_loader) as pbar:
+            for step, (src_mel, src_emb) in enumerate(pbar):
+                src_mel = src_mel.to(device)
+                src_emb = src_emb.to(device)
 
-        for step, (src_mel, src_emb) in enumerate(pbar):
-            src_mel = src_mel.to(device)
-            src_emb = src_emb.to(device)
+                optimizer.zero_grad()
+                src_cnt, rec_mel, pst_mel, pst_cnt = net(src_mel, src_emb)
+                loss, loss_detail = creterion(src_mel, src_cnt, rec_mel, pst_mel, pst_cnt)
+                loss.backward()
+                optimizer.step()
 
-            optimizer.zero_grad()
-            src_cnt, rec_mel, pst_mel, pst_cnt = net(src_mel, src_emb)
-            loss, loss_detail = creterion(src_mel, src_cnt, rec_mel, pst_mel, pst_cnt)
-            loss.backward()
-            optimizer.step()
-
-            sw.add_scalar('loss', loss.item(), step + epoch * len(train_loader))
-            sw.add_scalar('rec_loss', loss_detail[0].item(), step + epoch * len(train_loader))
-            sw.add_scalar('pst_loss', loss_detail[1].item(), step + epoch * len(train_loader))
-            sw.add_scalar('cnt_loss', loss_detail[2].item(), step + epoch * len(train_loader))
-            
-            pbar.set_description(f'Epoch {epoch}')
-            pbar.set_postfix(loss=loss.item())
+                sw.add_scalar('loss', loss.item(), step + epoch * len(train_loader))
+                sw.add_scalar('rec_loss', loss_detail[0].item(), step + epoch * len(train_loader))
+                sw.add_scalar('pst_loss', loss_detail[1].item(), step + epoch * len(train_loader))
+                sw.add_scalar('cnt_loss', loss_detail[2].item(), step + epoch * len(train_loader))
+                
+                pbar.set_description(f'Epoch {epoch}')
+                pbar.set_postfix(loss=loss.item())
     
     train_loader = torch.utils.data.DataLoader(
-        dataset.MelEmbLoader(mel_dir, embed_dir, config['embed']['embed_dim']),
+        dataset.MelEmbLoader(mel_dir, embed_dir, **config['data']),
         batch_size=config['train']['batch_size'],
         shuffle=True,
         num_workers=config['train']['num_workers'],
-        pin_memory=True,
+        pin_memory=False,
     )
 
     optimizer = torch.optim.Adam(net.parameters(), lr=config['train']['lr'])

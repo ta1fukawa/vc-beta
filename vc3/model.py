@@ -32,7 +32,7 @@ class Conv1d(torch.nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1, bias=True, w_init_gain='linear'):
         super(Conv1d, self).__init__()
 
-        self.conv = torch.nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, bias)
+        self.conv = torch.nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, bias=bias)
         torch.nn.init.xavier_uniform_(self.conv.weight, gain=torch.nn.init.calculate_gain(w_init_gain))
 
     def forward(self, x):
@@ -42,7 +42,7 @@ class Conv2d(torch.nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1, bias=True, w_init_gain='linear'):
         super(Conv2d, self).__init__()
 
-        self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, bias)
+        self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, bias=bias)
         torch.nn.init.xavier_uniform_(self.conv.weight, gain=torch.nn.init.calculate_gain(w_init_gain))
 
     def forward(self, x):
@@ -57,9 +57,6 @@ class AutoVC(torch.nn.Module):
         self.decoder         = Decoder(**config['decoder'])
         self.postnet         = PostNet(**config['postnet'])
 
-        for p in self.speaker_encoder.parameters():
-            p.requires_grad_(False)
-
     def forward(self, src_mel, src_emb, tgt_emb=None):
         if tgt_emb is None:
             tgt_emb = src_emb
@@ -70,14 +67,20 @@ class AutoVC(torch.nn.Module):
             tgt_emb.unsqueeze(1).expand(-1, src_mel.size(1), -1)
         ], dim=-1)
         rec_mel = self.decoder(self.prenet(mid))
-        pst_mel = src_cnt + self.postnet(rec_mel.transpose(2, 1)).transpose(2, 1)
-        pst_cnt = torch.cat(self.content_encoder(pst_mel, src_emb), dim=-1)
+        pst_mel = rec_mel + self.postnet(rec_mel.transpose(2, 1)).transpose(2, 1)  # postnetの出力は微小な補正値かな？
+        pst_cnt = self.content_encoder(pst_mel, src_emb)
+
+        # src_cnt = src_cnt.transpose(0, 1).reshape(src_cnt.shape[0], -1)
+        # pst_cnt = pst_cnt.transpose(0, 1).reshape(pst_cnt.shape[0], -1)
 
         return src_cnt, rec_mel, pst_mel, pst_cnt
 
 class ContentEncoder(torch.nn.Module):
-    def __init__(self, dim_in, dim_hidden, dim_neck, dim_emb, n_layers, n_lstm_layers, kernel_size, stride=1, dilation=1, activation='relu', activation_params=None):
+    def __init__(self, dim_in, dim_hidden, dim_neck, dim_emb, lstm_stride, n_layers, n_lstm_layers, kernel_size, stride=1, dilation=1, activation='relu', activation_params=None):
         super(ContentEncoder, self).__init__()
+
+        self.dim_neck    = dim_neck
+        self.lstm_stride = lstm_stride
 
         if activation_params is None:
             activation_params = {}
@@ -100,16 +103,17 @@ class ContentEncoder(torch.nn.Module):
 
     def forward(self, mel, emb):
         mel = mel.squeeze(1).transpose(2, 1)
-        emb = emb.squeeze(-1).expand(-1, -1, mel.size(1))
-        x = torch.cat([mel, emb], dim=-1)
+        emb = emb.unsqueeze(-1).expand(-1, -1, mel.size(-1))
+        x = torch.cat([mel, emb], dim=1)
 
         for conv in self.conv_layers:
             x = conv(x)
+        x = x.transpose(2, 1)
         
         x, _ = self.lstm(x)
         cnt  = torch.cat([
-            x[:, self.skip_len - 1::self.skip_len, :self.dim_neck],
-            x[:, :-self.skip_len + 1:self.skip_len, self.dim_neck:]
+            x[:, self.lstm_stride - 1::self.lstm_stride, :self.dim_neck],
+            x[:, :-self.lstm_stride + 1:self.lstm_stride, self.dim_neck:]
         ], dim=-1).transpose(0, 1)
 
         return cnt
@@ -179,7 +183,7 @@ class PostNet(torch.nn.Module):
                 dilation=dilation,
                 w_init_gain=activation if i != n_layers - 1 else 'linear'
             ),
-            torch.nn.BatchNorm1d(dim_in),
+            torch.nn.BatchNorm1d(dim_hidden if i != n_layers - 1 else dim_out),
             get_activation(activation, **activation_params),
         ) for i in range(n_layers)])
 
