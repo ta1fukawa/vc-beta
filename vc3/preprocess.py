@@ -1,10 +1,11 @@
 import argparse
 import pathlib
 import sys
+
 import torch
-import yaml
 import torchaudio
-import numpy as np
+import yaml
+
 
 def wave2mel(wave, sample_rate, norm_db, sil_threshold, sil_duration, fft_window_ms, fft_hop_ms, n_fft, f_min, n_mels, preemph, ref_db, dc_db):
     effects = [
@@ -24,7 +25,7 @@ def wave2mel(wave, sample_rate, norm_db, sil_threshold, sil_duration, fft_window
     wave, sample_rate = torchaudio.sox_effects.apply_effects_tensor(wave, sample_rate, effects)
     wave = torch.cat([wave[:, 0].unsqueeze(-1), wave[:, 1:] - preemph * wave[:, :-1]], dim=-1)
 
-    mel  = torchaudio.transforms.MelSpectrogram(
+    mel = torchaudio.transforms.MelSpectrogram(
         sample_rate=sample_rate,
         win_length=int(sample_rate * fft_window_ms / 1000),
         hop_length=int(sample_rate * fft_hop_ms    / 1000),
@@ -81,11 +82,11 @@ def main(wav_dir, mel_dir, embed_dir, encoder_path, config_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert wav to mel spectrogram')
-    parser.add_argument('wav_dir', type=pathlib.Path, help='directory of speaker directories containing wav files')
-    parser.add_argument('mel_dir', type=pathlib.Path, help='directory to save mel spectrograms')
-    parser.add_argument('embed_dir', type=pathlib.Path, help='directory to save embeddings')
-    parser.add_argument('encoder_path', type=pathlib.Path, help='path to encoder')
-    parser.add_argument('config_path', type=pathlib.Path, help='path to config')
+    parser.add_argument('wav_dir',      type=pathlib.Path, help='directory of speaker directories containing wav files')
+    parser.add_argument('mel_dir',      type=pathlib.Path, help='directory to save mel spectrograms')
+    parser.add_argument('embed_dir',    type=pathlib.Path, help='directory to save embeddings')
+    parser.add_argument('encoder_path', type=pathlib.Path, help='path to speaker encoder')
+    parser.add_argument('config_path',  type=pathlib.Path, help='path to config')
 
     if 'debugpy' in sys.modules:
         args = parser.parse_args([
@@ -97,5 +98,5 @@ if __name__ == '__main__':
         ])
     else:
         args = parser.parse_args()
-    
+
     main(**vars(args))
