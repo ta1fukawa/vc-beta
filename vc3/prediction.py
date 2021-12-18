@@ -22,17 +22,15 @@ def main(source, target, output_dir, encoder_path, model_dir, vocoder_path, conf
     tgt_wave, sample_rate = torchaudio.load(target)
     src_mel = common.wave2mel(src_wave, **config['wave2mel']).to(device)
     tgt_mel = common.wave2mel(tgt_wave, **config['wave2mel']).to(device)
-    src_emb = common.mel2embed(src_mel, encoder, device, **config['mel2embed'])
-    tgt_emb = common.mel2embed(tgt_mel, encoder, device, **config['mel2embed'])
+    src_emb = common.mel2embed(src_mel.unsqueeze(0), encoder, device, **config['mel2embed']).unsqueeze(0)
+    tgt_emb = common.mel2embed(tgt_mel.unsqueeze(0), encoder, device, **config['mel2embed']).unsqueeze(0)
 
-    src_mel = src_mel.unsqueeze(0)
+    src_mel = common.pad_seq(src_mel, config['mel2embed']['seg_len']).unsqueeze(0)
     with torch.no_grad():
-        _, _, pred_mel, _ = model(src_emb, tgt_emb, src_mel)
-        pred_wave         = vocoder.generate(pred_mel)
-    pred_wave = pred_wave.squeeze(0).data.cpu().numpy()
+        _, _, pred_mel, _ = model(src_mel, src_emb, tgt_emb)
+        pred_wave         = vocoder.generate([pred_mel.squeeze(0)])[0].data.cpu()
 
-    torchaudio.save(output_dir / 'output.wav', (pred_wave, config['wave2mel']['sample_rate']))
-
+    torchaudio.save(output_dir / 'output.wav', pred_wave, config['wave2mel']['sample_rate'])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert wav to mel spectrogram')
