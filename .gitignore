@@ -139,3 +139,5 @@ Pipfile
 *.pt
 *.pth
 *.0
+*.wav
+*.code-workspace
