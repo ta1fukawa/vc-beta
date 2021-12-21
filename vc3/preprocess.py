@@ -30,7 +30,8 @@ def main(wav_dir, mel_dir, embed_dir, encoder_path, config_path):
                 continue
 
             wave, sample_rate = torchaudio.load(wav)
-            mel   = common.wave2mel(wave, **config['wave2mel'])
+            wave, sample_rate = common.norm_wave(wave, **config['norm_wave'])
+            mel, _ = common.wave2mel(wave, sample_rate, **config['mel'])
 
             torch.save(mel, (mel_dir / speaker_name / f'{wav.stem}.pt'))
 

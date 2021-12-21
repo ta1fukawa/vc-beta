@@ -12,7 +12,7 @@ def main(source, target, output, encoder_path, model_dir, vocoder_path, config_p
     device  = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     encoder = torch.load(encoder_path)          .to(device).eval()
     model   = torch.load(model_dir / 'model.pt').to(device).eval()
-    vocoder = torch.load(vocoder_path)          .to(device).eval()
+    # vocoder = torch.load(vocoder_path)          .to(device).eval()
     config  = yaml.load(config_path.read_text(), Loader=yaml.FullLoader)
     model.load_state_dict(torch.load(model_dir / 'weight.pt'))
 
@@ -20,17 +20,20 @@ def main(source, target, output, encoder_path, model_dir, vocoder_path, config_p
 
     src_wave, sample_rate = torchaudio.load(source)
     tgt_wave, sample_rate = torchaudio.load(target)
-    src_mel = common.wave2mel(src_wave, **config['wave2mel']).to(device)
-    tgt_mel = common.wave2mel(tgt_wave, **config['wave2mel']).to(device)
-    src_emb = common.mel2embed(src_mel.unsqueeze(0), encoder, device, **config['mel2embed']).unsqueeze(0)
-    tgt_emb = common.mel2embed(tgt_mel.unsqueeze(0), encoder, device, **config['mel2embed']).unsqueeze(0)
+    src_wave, sample_rate = common.norm_wave(src_wave, **config['norm_wave'])
+    tgt_wave, sample_rate = common.norm_wave(tgt_wave, **config['norm_wave'])
+    src_mel, src_angle = common.wave2mel(src_wave, sample_rate, **config['mel'])
+    tgt_mel, tgt_angle = common.wave2mel(tgt_wave, sample_rate, **config['mel'])
+    src_emb = common.mel2embed(src_mel.unsqueeze(0).to(device), encoder, device, **config['mel2embed']).unsqueeze(0)
+    tgt_emb = common.mel2embed(tgt_mel.unsqueeze(0).to(device), encoder, device, **config['mel2embed']).unsqueeze(0)
 
     src_mel = common.pad_seq(src_mel, config['mel2embed']['seg_len']).unsqueeze(0)
     with torch.no_grad():
         _, _, pred_mel, _ = model(src_mel, src_emb, tgt_emb)
-        pred_wave         = vocoder.generate([pred_mel.squeeze(0)])[0].data.unsqueeze(0).cpu()
+        # pred_wave         = vocoder.generate([pred_mel.squeeze(0)])[0].data.unsqueeze(0).cpu()
 
-    torchaudio.save(output, pred_wave, config['wave2mel']['sample_rate'])
+    pred_wave = common.mel2wave(pred_mel.squeeze(0).cpu(), src_angle, sample_rate, **config['mel'])
+    torchaudio.save(output, pred_wave, sample_rate)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert wav to mel spectrogram')
